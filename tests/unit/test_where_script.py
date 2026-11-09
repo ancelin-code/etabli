@@ -60,16 +60,16 @@ def task(repo: Path, task_id: str, depends_on: str = "", review: str | None = No
     lenses = "" if review is None else f"review: [{review}]\n"
     write(
         repo,
-        f"delivery/tasks/{task_id}.md",
+        f"specs/tasks/{task_id}.md",
         f"---\nid: {task_id}\ntitle: Do {task_id}\nepic: a\ndepends_on: [{depends_on}]\n"
         f"parallel: {str(not alone).lower()}\nconflicts_with: []\ntier: build\n{lenses}---\n\n"
         "## Acceptance criteria\n- observable\n",
     )
 
 
-def approved_plan(repo: Path, run_as: str = "lanes") -> None:
-    artifact(repo, "delivery/prd.md", "approved")
-    artifact(repo, "delivery/decomposition.md", "approved", f"\n**Run as:** {run_as}\n")
+def approved_plan(repo: Path, run_as: str = "benches") -> None:
+    artifact(repo, "specs/prd.md", "approved")
+    artifact(repo, "specs/decomposition.md", "approved", f"\n**Run as:** {run_as}\n")
 
 
 def claim(repo: Path, task_id: str) -> None:
@@ -142,10 +142,10 @@ def actions(stdout: str) -> list[str]:
 
 
 class TestPhases:
-    """Before lanes, the next action follows from which artifact is missing or unapproved."""
+    """Before benches, the next action follows from which artifact is missing or unapproved."""
 
     def test_an_empty_project_starts_with_requirements(self, tmp_path: Path) -> None:
-        # Given a repository with no delivery files
+        # Given a repository with no specs files
         repo = make_repo(tmp_path)
 
         # When where.sh runs
@@ -153,13 +153,13 @@ class TestPhases:
 
         # Then requirements are missing, and writing them is next
         assert result.returncode == OK
-        assert ["requirements", "missing", "delivery/prd.md"] in rows(result.stdout, "PHASE")
+        assert ["requirements", "missing", "specs/prd.md"] in rows(result.stdout, "PHASE")
         assert actions(result.stdout)[-1] == "write-requirements"
 
     def test_a_draft_prd_waits_for_approval(self, tmp_path: Path) -> None:
         # Given a draft PRD
         repo = make_repo(tmp_path)
-        artifact(repo, "delivery/prd.md", "draft")
+        artifact(repo, "specs/prd.md", "draft")
 
         # When where.sh runs
         result = where(repo, fake_gh(tmp_path))
@@ -170,7 +170,7 @@ class TestPhases:
     def test_an_unfilled_template_status_is_not_approved(self, tmp_path: Path) -> None:
         # Given a PRD whose status is still the template's choice
         repo = make_repo(tmp_path)
-        artifact(repo, "delivery/prd.md", "draft | approved")
+        artifact(repo, "specs/prd.md", "draft | approved")
 
         # When where.sh runs
         result = where(repo, fake_gh(tmp_path))
@@ -181,19 +181,19 @@ class TestPhases:
     def test_a_draft_contract_holds_decomposition(self, tmp_path: Path) -> None:
         # Given an approved PRD and a draft contract
         repo = make_repo(tmp_path)
-        artifact(repo, "delivery/prd.md", "approved")
-        artifact(repo, "delivery/contracts/payload.md", "draft")
+        artifact(repo, "specs/prd.md", "approved")
+        artifact(repo, "specs/contracts/payload.md", "draft")
 
         # When where.sh runs
         result = where(repo, fake_gh(tmp_path))
 
         # Then the contract's approval is next, named
-        assert rows(result.stdout, "NEXT")[-1] == ["approve-design", "awaiting approval: delivery/contracts/payload.md"]
+        assert rows(result.stdout, "NEXT")[-1] == ["approve-design", "awaiting approval: specs/contracts/payload.md"]
 
     def test_a_proposed_decision_record_holds_decomposition(self, tmp_path: Path) -> None:
         # Given an approved PRD and a proposed decision record
         repo = make_repo(tmp_path)
-        artifact(repo, "delivery/prd.md", "approved")
+        artifact(repo, "specs/prd.md", "approved")
         artifact(repo, "docs/adr/ADR-001-x.md", "proposed")
 
         # When where.sh runs
@@ -205,7 +205,7 @@ class TestPhases:
     def test_without_a_spine_the_choice_is_design_or_decompose(self, tmp_path: Path) -> None:
         # Given an approved PRD and no design documents
         repo = make_repo(tmp_path)
-        artifact(repo, "delivery/prd.md", "approved")
+        artifact(repo, "specs/prd.md", "approved")
 
         # When where.sh runs
         result = where(repo, fake_gh(tmp_path))
@@ -216,8 +216,8 @@ class TestPhases:
     def test_with_an_agreed_spine_the_next_phase_is_decomposition(self, tmp_path: Path) -> None:
         # Given an approved PRD and an agreed contract
         repo = make_repo(tmp_path)
-        artifact(repo, "delivery/prd.md", "approved")
-        artifact(repo, "delivery/contracts/payload.md", "agreed")
+        artifact(repo, "specs/prd.md", "approved")
+        artifact(repo, "specs/contracts/payload.md", "agreed")
 
         # When where.sh runs
         result = where(repo, fake_gh(tmp_path))
@@ -228,8 +228,8 @@ class TestPhases:
     def test_a_draft_decomposition_waits_for_approval(self, tmp_path: Path) -> None:
         # Given a draft decomposition with a task
         repo = make_repo(tmp_path)
-        artifact(repo, "delivery/prd.md", "approved")
-        artifact(repo, "delivery/decomposition.md", "draft")
+        artifact(repo, "specs/prd.md", "approved")
+        artifact(repo, "specs/decomposition.md", "draft")
         task(repo, "a-001")
 
         # When where.sh runs
@@ -240,7 +240,7 @@ class TestPhases:
         assert rows(result.stdout, "TASK") == []
 
 
-class TestLanes:
+class TestBenches:
     """Once decomposition is approved, the next action follows from derived task state."""
 
     def test_ready_tasks_are_launched(self, tmp_path: Path) -> None:
@@ -285,7 +285,7 @@ class TestLanes:
         action, detail = rows(result.stdout, "NEXT")[-1]
         assert action == "start"
         assert detail.startswith("alone, first of: a-001 a-002 (sh ")
-        assert detail.endswith("launch-lanes.sh a-001)")
+        assert detail.endswith("launch-benches.sh a-001)")
 
     def test_a_task_that_runs_alone_waits_for_work_in_flight(self, tmp_path: Path) -> None:
         # Given a task that runs alone, and another in flight
@@ -314,7 +314,7 @@ class TestLanes:
         # Then the shared task starts and the lone one is named for after
         action, detail = rows(result.stdout, "NEXT")[-1]
         assert action == "start"
-        assert detail.startswith("launch lanes for: a-001 (sh ")
+        assert detail.startswith("launch benches for: a-001 (sh ")
         assert detail.endswith("; after they merge, alone: a-002")
 
     def test_a_merged_task_with_its_branch_deleted_is_not_offered_again(self, tmp_path: Path) -> None:
@@ -330,7 +330,7 @@ class TestLanes:
         # Then only a-002 is offered
         action, detail = rows(result.stdout, "NEXT")[-1]
         assert action == "start"
-        assert detail.startswith("launch lanes for: a-002 (sh ")
+        assert detail.startswith("launch benches for: a-002 (sh ")
 
     def test_every_task_merged_is_complete(self, tmp_path: Path) -> None:
         # Given the only task merged
@@ -374,21 +374,21 @@ class TestLanes:
 
 def milestone_plan(repo: Path, second_epics: str = "") -> None:
     """Two milestones; the first holds epic a, the one task() writes into."""
-    artifact(repo, "delivery/prd.md", "approved")
+    artifact(repo, "specs/prd.md", "approved")
     artifact(
         repo,
-        "delivery/decomposition.md",
+        "specs/decomposition.md",
         "approved",
         "\n## Milestones\n\n### skeleton\n\n**Exit:** it works.\n**Requirements:**\n**Epics:** a\n\n"
         f"### team\n\n**Exit:** it is shared.\n**Requirements:**\n**Epics:** {second_epics}\n\n"
-        "## Parallelism\n\n**Run as:** lanes\n",
+        "## Parallelism\n\n**Run as:** benches\n",
     )
 
 
 class TestMilestones:
     """With milestones, merged work stops at a review instead of reading as complete."""
 
-    def test_the_current_milestone_runs_lanes_as_usual(self, tmp_path: Path) -> None:
+    def test_the_current_milestone_runs_benches_as_usual(self, tmp_path: Path) -> None:
         # Given two milestones, with a ready task in the first
         repo = make_repo(tmp_path)
         milestone_plan(repo)
@@ -413,7 +413,7 @@ class TestMilestones:
         # Then its review is next, with the coverage command
         action, detail = rows(result.stdout, "NEXT")[-1]
         assert action == "review-milestone"
-        assert "write delivery/milestones/skeleton.md with etabli-decompose" in detail
+        assert "write specs/milestones/skeleton.md with etabli-decompose" in detail
         assert detail.endswith("etabli-status/scripts/coverage.sh --milestone skeleton)")
 
     def test_a_draft_review_awaits_approval(self, tmp_path: Path) -> None:
@@ -421,7 +421,7 @@ class TestMilestones:
         repo = make_repo(tmp_path)
         milestone_plan(repo)
         task(repo, "a-001")
-        artifact(repo, "delivery/milestones/skeleton.md", "draft")
+        artifact(repo, "specs/milestones/skeleton.md", "draft")
 
         # When where.sh runs
         result = where(repo, fake_gh(tmp_path, merged=["a-001"]))
@@ -429,7 +429,7 @@ class TestMilestones:
         # Then the review's approval is next
         assert rows(result.stdout, "NEXT")[-1] == [
             "approve-milestone-review",
-            "delivery/milestones/skeleton.md awaits human approval",
+            "specs/milestones/skeleton.md awaits human approval",
         ]
 
     def test_an_approved_review_asks_for_the_next_cut(self, tmp_path: Path) -> None:
@@ -437,7 +437,7 @@ class TestMilestones:
         repo = make_repo(tmp_path)
         milestone_plan(repo)
         task(repo, "a-001")
-        artifact(repo, "delivery/milestones/skeleton.md", "approved")
+        artifact(repo, "specs/milestones/skeleton.md", "approved")
 
         # When where.sh runs
         result = where(repo, fake_gh(tmp_path, merged=["a-001"]))
@@ -453,11 +453,11 @@ class TestMilestones:
         task(repo, "a-001")
         write(
             repo,
-            "delivery/tasks/b-001.md",
+            "specs/tasks/b-001.md",
             "---\nid: b-001\ntitle: Do b-001\nepic: b\ndepends_on: []\nparallel: true\n"
             "conflicts_with: []\ntier: build\n---\n\n## Acceptance criteria\n- observable\n",
         )
-        artifact(repo, "delivery/milestones/skeleton.md", "approved")
+        artifact(repo, "specs/milestones/skeleton.md", "approved")
         merged = fake_gh(tmp_path, merged=["a-001", "b-001"])
 
         # When where.sh runs
@@ -467,7 +467,7 @@ class TestMilestones:
         assert actions(result.stdout)[-1] == "review-milestone"
 
         # When that review is approved too
-        artifact(repo, "delivery/milestones/team.md", "approved")
+        artifact(repo, "specs/milestones/team.md", "approved")
         result = where(repo, merged)
 
         # Then the project is complete
@@ -507,7 +507,7 @@ def split_install(tmp_path: Path) -> Path:
 
 
 class TestInstallLayout:
-    """The kit's skills find each other as siblings, so a split install is the first thing to fix."""
+    """Établi's skills find each other as siblings, so a split install is the first thing to fix."""
 
     def test_a_split_install_is_reported_before_anything_else(self, tmp_path: Path) -> None:
         # Given a ready task, and an install split between two skill directories
@@ -530,7 +530,7 @@ class TestInstallLayout:
         assert ".agents/skills: etabli-implement." in detail
         assert rows(result.stdout, "PHASE") == []
 
-    def test_a_missing_delivery_refine_is_reported(self, tmp_path: Path) -> None:
+    def test_a_missing_etabli_refine_is_reported(self, tmp_path: Path) -> None:
         # Given an install without etabli-refine
         repo = make_repo(tmp_path)
         skills = tmp_path / "skills"
@@ -552,12 +552,12 @@ class TestInstallLayout:
         # Then repairing the install is next, naming the missing skill
         assert actions(result.stdout) == ["repair-install"]
         assert rows(result.stdout, "NEXT")[0][1].endswith(
-            ": etabli-refine. The kit installs whole: remove every etabli-* skill directory, "
+            ": etabli-refine. Établi installs whole: remove every etabli-* skill directory, "
             "then reinstall them all in one 'npx skills add', naming at least one agent that reads .agents/skills"
         )
 
     def test_a_whole_install_is_not_reported(self, tmp_path: Path) -> None:
-        # Given the kit installed whole
+        # Given Établi installed whole
         repo = make_repo(tmp_path)
 
         # When where.sh runs
@@ -596,7 +596,7 @@ class TestReview:
         # Given a lens file, a task asking for security, and pull requests with labels and paths
         repo = make_repo(tmp_path)
         approved_plan(repo)
-        write(repo, "delivery/review-lenses.conf", LENSES)
+        write(repo, "specs/review-lenses.conf", LENSES)
         task(repo, "a-001", review="security")
         task(repo, "a-002")
         prs = {
@@ -621,7 +621,7 @@ class TestReview:
         # Given a lens on *.md and a pull request changing a nested markdown file
         repo = make_repo(tmp_path)
         approved_plan(repo)
-        write(repo, "delivery/review-lenses.conf", LENSES)
+        write(repo, "specs/review-lenses.conf", LENSES)
         task(repo, "a-001")
 
         # When where.sh runs
@@ -634,7 +634,7 @@ class TestReview:
         # Given a lens file and nothing in review
         repo = make_repo(tmp_path)
         approved_plan(repo)
-        write(repo, "delivery/review-lenses.conf", LENSES)
+        write(repo, "specs/review-lenses.conf", LENSES)
         task(repo, "a-001")
 
         # When where.sh runs
@@ -668,7 +668,7 @@ class TestRouting:
         result = subprocess.run([SH, str(INSTALL)], cwd=repo, capture_output=True, text=True, check=False)  # noqa: S603
 
         # Then AGENTS.md and the lens file are added
-        assert result.stdout == "ADDED\tAGENTS.md\nADDED\tdelivery/review-lenses.conf\n"
+        assert result.stdout == "ADDED\tAGENTS.md\nADDED\tspecs/review-lenses.conf\n"
         assert "etabli-orchestrator" in (repo / "AGENTS.md").read_text(encoding="utf-8")
 
         # When where.sh runs afterwards
@@ -708,14 +708,14 @@ class TestRouting:
     def test_install_leaves_an_edited_lens_file_alone(self, tmp_path: Path) -> None:
         # Given an edited lens file
         repo = make_repo(tmp_path)
-        write(repo, "delivery/review-lenses.conf", LENSES)
+        write(repo, "specs/review-lenses.conf", LENSES)
 
         # When the routing is installed
         result = subprocess.run([SH, str(INSTALL)], cwd=repo, capture_output=True, text=True, check=True)  # noqa: S603
 
         # Then the lens file is reported present and left as it was
-        assert "PRESENT\tdelivery/review-lenses.conf" in result.stdout
-        assert (repo / "delivery/review-lenses.conf").read_text(encoding="utf-8") == LENSES
+        assert "PRESENT\tspecs/review-lenses.conf" in result.stdout
+        assert (repo / "specs/review-lenses.conf").read_text(encoding="utf-8") == LENSES
 
     @pytest.mark.parametrize("script", [WHERE, INSTALL])
     def test_refuses_to_run_below_the_repository_root(self, tmp_path: Path, script: Path) -> None:

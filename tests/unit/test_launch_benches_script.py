@@ -1,4 +1,4 @@
-"""Behavioural tests for the lane launcher.
+"""Behavioural tests for the bench launcher.
 
 The launcher decides how many agent sessions start and on what, so the tests
 exercise its selection logic through ``--dry-run``: nothing is created and no
@@ -18,12 +18,12 @@ from tests.conftest import SH
 from tests.unit.tiers import TIERS
 
 SKILLS = Path(__file__).resolve().parents[2] / ".agents" / "skills"
-SCRIPT = SKILLS / "etabli-orchestrator" / "scripts" / "launch-lanes.sh"
+SCRIPT = SKILLS / "etabli-orchestrator" / "scripts" / "launch-benches.sh"
 CLAIM = SKILLS / "etabli-status" / "scripts" / "claim.sh"
 
 OK = 0
 USAGE_ERROR = 1
-NO_LANES = 3
+NO_BENCHES = 3
 STAND_IN_LOG_LINES = 2  # the fake agent records its directory, then its arguments
 
 pytestmark = pytest.mark.skipif(
@@ -56,7 +56,7 @@ def add_task(
     tier: str | None = "build",
     alone: bool = False,
 ) -> None:
-    tasks = repo / "delivery" / "tasks"
+    tasks = repo / "specs" / "tasks"
     tasks.mkdir(parents=True, exist_ok=True)
     (tasks / f"{task_id}.md").write_text(
         "---\n"
@@ -71,10 +71,10 @@ def add_task(
 def clean_env(repo: Path) -> dict[str, str]:
     """The ambient environment without the developer's own Établi settings.
 
-    A real ~/.config/etabli/tiers.conf or DELIVERY_HARNESS on the machine
+    A real ~/.config/etabli/tiers.conf or ETABLI_HARNESS on the machine
     running the suite would otherwise change what the launcher decides.
     """
-    env = {k: v for k, v in os.environ.items() if not k.startswith("DELIVERY_")}
+    env = {k: v for k, v in os.environ.items() if not k.startswith("ETABLI_")}
     env["XDG_CONFIG_HOME"] = str(repo.parent / "no-user-config")
     return env
 
@@ -102,7 +102,7 @@ def launch(
 ) -> subprocess.CompletedProcess[str]:
     env = clean_env(repo)
     if worktree_root is not None:
-        env["DELIVERY_WORKTREE_ROOT"] = worktree_root
+        env["ETABLI_WORKTREE_ROOT"] = worktree_root
     env.update(env_extra or {})
     return subprocess.run(  # noqa: S603
         [SH, str(SCRIPT), *args],
@@ -116,18 +116,18 @@ def launch(
 
 
 def wait_for(condition: Callable[[], object], seconds: float = 10.0) -> None:
-    """Poll until a lane's background session has done what the test looks for."""
+    """Poll until a bench's background session has done what the test looks for."""
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
         if condition():
             return
         time.sleep(0.1)
-    message = "timed out waiting for the lane's session"
+    message = "timed out waiting for the bench's session"
     raise AssertionError(message)
 
 
 def session_log(log: Path) -> str:
-    """What the lane's session recorded, once it has.
+    """What the bench's session recorded, once it has.
 
     The launcher starts the session in the background and returns at once, so a
     test that reads the log straight after launching races it: a loaded runner
@@ -141,7 +141,7 @@ def launched_ids(stdout: str) -> list[str]:
     return [line.split("\t")[1] for line in stdout.splitlines() if line.startswith(("WOULD-LAUNCH", "LAUNCHED"))]
 
 
-class TestLaneSelection:
+class TestBenchSelection:
     def test_launches_the_tasks_it_is_given(self, tmp_path: Path) -> None:
         # Given two tasks
         repo = make_repo(tmp_path)
@@ -155,8 +155,8 @@ class TestLaneSelection:
         assert result.returncode == OK
         assert launched_ids(result.stdout) == ["a-001", "a-002"]
 
-    def test_respects_the_lane_cap(self, tmp_path: Path) -> None:
-        """Readiness is not capacity: more ready tasks than lanes is the normal case."""
+    def test_respects_the_bench_cap(self, tmp_path: Path) -> None:
+        """Readiness is not capacity: more ready tasks than benches is the normal case."""
         # Given five tasks and a cap of two
         repo = make_repo(tmp_path)
         for n in range(1, 6):
@@ -164,11 +164,11 @@ class TestLaneSelection:
         cap = 2
 
         # When they are planned
-        result = launch(repo, ["--dry-run", "--max-lanes", str(cap), *[f"a-00{n}" for n in range(1, 6)]])
+        result = launch(repo, ["--dry-run", "--max-benches", str(cap), *[f"a-00{n}" for n in range(1, 6)]])
 
         # Then two would launch
         assert len(launched_ids(result.stdout)) == cap
-        assert f"LANES\t{cap}" in result.stdout
+        assert f"BENCHES\t{cap}" in result.stdout
 
     def test_never_runs_two_conflicting_tasks_together(self, tmp_path: Path) -> None:
         # Given a-002 conflicting with a-001
@@ -181,7 +181,7 @@ class TestLaneSelection:
 
         # Then only a-001 would launch
         assert launched_ids(result.stdout) == ["a-001"]
-        assert "conflicts with running lane a-001" in result.stdout
+        assert "conflicts with running bench a-001" in result.stdout
 
     def test_catches_a_conflict_declared_on_only_one_side(self, tmp_path: Path) -> None:
         """A one-sided declaration must still hold when the tasks arrive reversed."""
@@ -195,9 +195,9 @@ class TestLaneSelection:
 
         # Then only a-002 would launch
         assert launched_ids(result.stdout) == ["a-002"]
-        assert "conflicts with running lane a-002" in result.stdout
+        assert "conflicts with running bench a-002" in result.stdout
 
-    def test_a_conflicting_task_does_not_consume_a_lane_slot(self, tmp_path: Path) -> None:
+    def test_a_conflicting_task_does_not_consume_a_bench_slot(self, tmp_path: Path) -> None:
         # Given a-002 conflicting with a-001, and a cap of two
         repo = make_repo(tmp_path)
         add_task(repo, "a-001")
@@ -205,7 +205,7 @@ class TestLaneSelection:
         add_task(repo, "a-003")
 
         # When three tasks are planned
-        result = launch(repo, ["--dry-run", "--max-lanes", "2", "a-001", "a-002", "a-003"])
+        result = launch(repo, ["--dry-run", "--max-benches", "2", "a-001", "a-002", "a-003"])
 
         # Then the skipped one leaves its slot to a-003
         assert launched_ids(result.stdout) == ["a-001", "a-003"]
@@ -219,7 +219,7 @@ class TestLaneSelection:
         result = launch(repo, ["--dry-run", "a-999"])
 
         # Then it is skipped and nothing launches
-        assert result.returncode == NO_LANES
+        assert result.returncode == NO_BENCHES
         assert "no task file" in result.stdout
 
     def test_dies_when_the_tasks_directory_is_absent(self, tmp_path: Path) -> None:
@@ -258,7 +258,7 @@ class TestLaneSelection:
 
 
 class TestRunsAlone:
-    """parallel: false means no other lane of the set runs while this one does."""
+    """parallel: false means no other bench of the set runs while this one does."""
 
     def test_a_task_that_runs_alone_holds_back_the_rest_of_the_batch(self, tmp_path: Path) -> None:
         # Given a-001 runs alone
@@ -273,7 +273,7 @@ class TestRunsAlone:
         assert launched_ids(result.stdout) == ["a-001"]
         assert "SKIP\ta-002\ta-001 runs alone" in result.stdout
 
-    def test_a_task_that_runs_alone_waits_for_lanes_already_started(self, tmp_path: Path) -> None:
+    def test_a_task_that_runs_alone_waits_for_benches_already_started(self, tmp_path: Path) -> None:
         # Given a-002 runs alone, between two shared tasks
         repo = make_repo(tmp_path)
         add_task(repo, "a-001")
@@ -283,12 +283,12 @@ class TestRunsAlone:
         # When the three are planned
         result = launch(repo, ["--dry-run", "a-001", "a-002", "a-003"])
 
-        # Then a-002 waits for the lanes started before it
+        # Then a-002 waits for the benches started before it
         assert launched_ids(result.stdout) == ["a-001", "a-003"]
-        assert "runs alone, and this batch already started lanes" in result.stdout
+        assert "runs alone, and this batch already started benches" in result.stdout
 
     def test_a_serial_set_launches_one_task(self, tmp_path: Path) -> None:
-        """Every task false is what a serial set is; no --max-lanes 1 to remember."""
+        """Every task false is what a serial set is; no --max-benches 1 to remember."""
         # Given three tasks that each run alone
         repo = make_repo(tmp_path)
         for n in (1, 2, 3):
@@ -346,7 +346,7 @@ class TestTiers:
         mapping = write_tiers(tmp_path / "tiers.conf", conf(build={"model": "sonnet"}))
 
         # When it is planned
-        result = launch(repo, ["--dry-run", "a-001"], env_extra={"DELIVERY_TIERS": str(mapping)})
+        result = launch(repo, ["--dry-run", "a-001"], env_extra={"ETABLI_TIERS": str(mapping)})
 
         # Then it gets the build model
         assert fields(result.stdout)[MODEL] == "sonnet"
@@ -373,7 +373,7 @@ class TestTiers:
         )
 
         # When a task of each is planned
-        result = launch(repo, ["--dry-run", "a-001", "a-002"], env_extra={"DELIVERY_TIERS": str(mapping)})
+        result = launch(repo, ["--dry-run", "a-001", "a-002"], env_extra={"ETABLI_TIERS": str(mapping)})
         rows = [line.split("\t") for line in result.stdout.splitlines() if line.startswith("WOULD")]
 
         # Then each gets its tier's harness and model
@@ -387,7 +387,7 @@ class TestTiers:
         mapping = write_tiers(tmp_path / "tiers.conf", conf(build={"model": "sonnet"}, chore={"harness": "claude"}))
 
         # When a task of each is planned
-        result = launch(repo, ["--dry-run", "a-001", "a-002"], env_extra={"DELIVERY_TIERS": str(mapping)})
+        result = launch(repo, ["--dry-run", "a-001", "a-002"], env_extra={"ETABLI_TIERS": str(mapping)})
         rows = [line.split("\t") for line in result.stdout.splitlines() if line.startswith("WOULD")]
 
         # Then the missing half is left to defaults
@@ -401,7 +401,7 @@ class TestTiers:
         mapping = write_tiers(tmp_path / "tiers.conf", conf(chore={"harness": "copilot", "model": "gpt-6-luna"}))
 
         # When a chore task is planned on claude
-        result = launch(repo, ["--dry-run", "--harness", "claude", "a-001"], env_extra={"DELIVERY_TIERS": str(mapping)})
+        result = launch(repo, ["--dry-run", "--harness", "claude", "a-001"], env_extra={"ETABLI_TIERS": str(mapping)})
 
         # Then the copilot model is not used
         assert fields(result.stdout)[HARNESS : MODEL + 1] == ["claude", "default"]
@@ -411,7 +411,7 @@ class TestTiers:
         repo = make_repo(tmp_path)
         add_task(repo, "a-001", tier="plan")
         mapping = write_tiers(tmp_path / "tiers.conf", conf(plan={"harness": "claude", "model": "opus"}))
-        env = {"DELIVERY_TIERS": str(mapping), "DELIVERY_HARNESS": "claude"}
+        env = {"ETABLI_TIERS": str(mapping), "ETABLI_HARNESS": "claude"}
 
         # When --harness copilot is given
         result = launch(repo, ["--dry-run", "--harness", "copilot", "a-001"], env_extra=env)
@@ -424,7 +424,7 @@ class TestTiers:
         repo = make_repo(tmp_path)
         add_task(repo, "a-001", tier="plan")
         mapping = write_tiers(tmp_path / "tiers.conf", conf(plan={"harness": "copilot"}))
-        env = {"DELIVERY_TIERS": str(mapping), "DELIVERY_HARNESS": "claude"}
+        env = {"ETABLI_TIERS": str(mapping), "ETABLI_HARNESS": "claude"}
 
         # When a task is planned
         result = launch(repo, ["--dry-run", "a-001"], env_extra=env)
@@ -433,12 +433,12 @@ class TestTiers:
         assert fields(result.stdout)[HARNESS] == "copilot"
 
     def test_the_environment_picks_the_harness_when_nothing_else_does(self, tmp_path: Path) -> None:
-        # Given no mapping and DELIVERY_HARNESS set
+        # Given no mapping and ETABLI_HARNESS set
         repo = make_repo(tmp_path)
         add_task(repo, "a-001")
 
         # When a task is planned
-        result = launch(repo, ["--dry-run", "a-001"], env_extra={"DELIVERY_HARNESS": "copilot"})
+        result = launch(repo, ["--dry-run", "a-001"], env_extra={"ETABLI_HARNESS": "copilot"})
 
         # Then the environment's harness is used
         assert fields(result.stdout)[HARNESS] == "copilot"
@@ -455,7 +455,7 @@ class TestTiers:
         assert result.returncode == OK
 
         # When auto is set in the environment
-        result = launch(repo, ["--dry-run", "a-001"], env_extra={"DELIVERY_HARNESS": "auto"})
+        result = launch(repo, ["--dry-run", "a-001"], env_extra={"ETABLI_HARNESS": "auto"})
 
         # Then it is accepted
         assert result.returncode == OK
@@ -479,13 +479,13 @@ class TestTiers:
         add_task(repo, "a-001", tier="plan")
         add_task(repo, "a-002", tier="build")
         write_tiers(
-            repo / "delivery" / "tiers.conf",
+            repo / "specs" / "tiers.conf",
             conf(plan={"model": "opus"}, build={"model": "sonnet"}),
         )
         mine = write_tiers(tmp_path / "mine.conf", conf(build={"model": "haiku"}))
 
         # When a task of each is planned
-        result = launch(repo, ["--dry-run", "a-001", "a-002"], env_extra={"DELIVERY_TIERS": str(mine)})
+        result = launch(repo, ["--dry-run", "a-001", "a-002"], env_extra={"ETABLI_TIERS": str(mine)})
         rows = [line.split("\t") for line in result.stdout.splitlines() if line.startswith("WOULD")]
 
         # Then plan follows the project and build the developer
@@ -496,11 +496,11 @@ class TestTiers:
         # Given the project maps build to a harness and model, the developer only a model
         repo = make_repo(tmp_path)
         add_task(repo, "a-001", tier="build")
-        write_tiers(repo / "delivery" / "tiers.conf", conf(build={"harness": "copilot", "model": "team-model"}))
+        write_tiers(repo / "specs" / "tiers.conf", conf(build={"harness": "copilot", "model": "team-model"}))
         mine = write_tiers(tmp_path / "mine.conf", conf(build={"model": "my-model"}))
 
         # When a build task is planned
-        result = launch(repo, ["--dry-run", "a-001"], env_extra={"DELIVERY_TIERS": str(mine)})
+        result = launch(repo, ["--dry-run", "a-001"], env_extra={"ETABLI_TIERS": str(mine)})
 
         # Then the developer's tier is taken whole, without the project's harness
         assert fields(result.stdout)[HARNESS : MODEL + 1] == ["auto", "my-model"]
@@ -513,7 +513,7 @@ class TestTiers:
         mapping = write_tiers(tmp_path / "t.conf", text)
 
         # When a task is planned
-        result = launch(repo, ["--dry-run", "a-001"], env_extra={"DELIVERY_TIERS": str(mapping)})
+        result = launch(repo, ["--dry-run", "a-001"], env_extra={"ETABLI_TIERS": str(mapping)})
 
         # Then the model is read
         assert fields(result.stdout)[MODEL] == "sonnet"
@@ -544,35 +544,35 @@ class TestTiers:
         mapping = write_tiers(tmp_path / "t.conf", text)
 
         # When a task is planned
-        result = launch(repo, ["--dry-run", "a-001"], env_extra={"DELIVERY_TIERS": str(mapping)})
+        result = launch(repo, ["--dry-run", "a-001"], env_extra={"ETABLI_TIERS": str(mapping)})
 
         # Then the launch stops, naming the file and the problem
         assert result.returncode == USAGE_ERROR
         assert message in result.stderr
 
     def test_a_named_mapping_file_that_does_not_exist_is_an_error(self, tmp_path: Path) -> None:
-        # Given DELIVERY_TIERS naming a missing file
+        # Given ETABLI_TIERS naming a missing file
         repo = make_repo(tmp_path)
         add_task(repo, "a-001")
 
         # When a task is planned
-        result = launch(repo, ["--dry-run", "a-001"], env_extra={"DELIVERY_TIERS": str(tmp_path / "nope.conf")})
+        result = launch(repo, ["--dry-run", "a-001"], env_extra={"ETABLI_TIERS": str(tmp_path / "nope.conf")})
 
         # Then it is a usage error
         assert result.returncode == USAGE_ERROR
-        assert "DELIVERY_TIERS names a missing file" in result.stderr
+        assert "ETABLI_TIERS names a missing file" in result.stderr
 
     def test_an_unknown_harness_in_the_environment_is_an_error(self, tmp_path: Path) -> None:
-        # Given an unknown DELIVERY_HARNESS
+        # Given an unknown ETABLI_HARNESS
         repo = make_repo(tmp_path)
         add_task(repo, "a-001")
 
         # When a task is planned
-        result = launch(repo, ["--dry-run", "a-001"], env_extra={"DELIVERY_HARNESS": "gemini"})
+        result = launch(repo, ["--dry-run", "a-001"], env_extra={"ETABLI_HARNESS": "gemini"})
 
         # Then it is a usage error
         assert result.returncode == USAGE_ERROR
-        assert "DELIVERY_HARNESS must be" in result.stderr
+        assert "ETABLI_HARNESS must be" in result.stderr
 
 
 class TestLauncherUsage:
@@ -596,13 +596,13 @@ class TestLauncherUsage:
         # Then it is a usage error
         assert result.returncode == USAGE_ERROR
 
-    def test_dies_on_a_zero_lane_cap(self, tmp_path: Path) -> None:
+    def test_dies_on_a_zero_bench_cap(self, tmp_path: Path) -> None:
         # Given one task
         repo = make_repo(tmp_path)
         add_task(repo, "a-001")
 
         # When the cap is zero
-        result = launch(repo, ["--dry-run", "--max-lanes", "0", "a-001"])
+        result = launch(repo, ["--dry-run", "--max-benches", "0", "a-001"])
 
         # Then it is a usage error
         assert result.returncode == USAGE_ERROR
@@ -616,11 +616,11 @@ class TestLauncherUsage:
         launch(repo, ["--dry-run", "a-001"])
 
         # Then no worktree or branch exists
-        assert not (tmp_path / "lanes").exists()
+        assert not (tmp_path / "benches").exists()
         assert "task/a-001" not in git(repo, "branch", "--list").stdout
 
     def test_worktrees_default_to_a_directory_named_after_this_repository(self, tmp_path: Path) -> None:
-        """Clones side by side must not share ../lanes: task ids repeat across projects."""
+        """Clones side by side must not share ../benches: task ids repeat across projects."""
         # Given one task
         repo = make_repo(tmp_path)
         add_task(repo, "a-001")
@@ -629,7 +629,7 @@ class TestLauncherUsage:
         result = launch(repo, ["--dry-run", "a-001"])
 
         # Then its worktree sits under a directory named after the repository
-        assert f"\t../lanes/{repo.name}/a-001\t" in result.stdout
+        assert f"\t../benches/{repo.name}/a-001\t" in result.stdout
 
     def test_worktree_root_holds_the_task_ids_directly(self, tmp_path: Path) -> None:
         # Given one task
@@ -701,7 +701,7 @@ def fake_harness(
 ) -> Path:
     """A stand-in for claude/copilot that records how it was invoked.
 
-    Only the given names are installed. Defaults to both, or a copilot lane
+    Only the given names are installed. Defaults to both, or a copilot bench
     falls through to the real CLI on a developer machine and the test
     silently starts a billed session; a single name simulates a machine that
     only has one harness installed. With ``edits`` the session leaves a change
@@ -709,12 +709,12 @@ def fake_harness(
     session does on an expired login or a model the account cannot use, and with
     ``fails_on`` it exits 1 only when its arguments contain that text.
 
-    A ``gh`` stub is always installed, so a published lane never reaches the
+    A ``gh`` stub is always installed, so a published bench never reaches the
     real forge.
     """
     bin_dir = tmp_path / "fakebin"
     bin_dir.mkdir(exist_ok=True)
-    edit = 'printf "done\\n" > lane-output.txt\n' if edits else ""
+    edit = 'printf "done\\n" > bench-output.txt\n' if edits else ""
     for name in names:
         stub = bin_dir / name
         stub.write_text(
@@ -769,10 +769,10 @@ def launch_live(
     )
 
 
-class TestLaneStartup:
+class TestBenchStartup:
     """The real path: worktree, claim, and a session actually started."""
 
-    def test_starts_the_agent_inside_the_lane_worktree(self, tmp_path: Path) -> None:
+    def test_starts_the_agent_inside_the_bench_worktree(self, tmp_path: Path) -> None:
         """A session started in the wrong directory would edit the wrong checkout."""
         # Given a clone of the shared remote
         origin_path = make_shared_origin(tmp_path)
@@ -780,37 +780,37 @@ class TestLaneStartup:
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log)
 
-        # When a lane is launched
+        # When a bench is launched
         result = launch_live(
             dev,
-            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanes"), "a-001"],
+            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "benches"), "a-001"],
             bin_dir,
             log,
         )
 
-        # Then the harness ran in the lane's worktree
+        # Then the harness ran in the bench's worktree
         assert result.returncode == OK
         recorded = session_log(log)
-        assert str(tmp_path / "lanes" / "a-001") in recorded
+        assert str(tmp_path / "benches" / "a-001") in recorded
 
-    def test_the_lane_branch_pushes_to_itself(self, tmp_path: Path) -> None:
-        """A lane started from the default branch must not track it, or a plain push goes astray."""
+    def test_the_bench_branch_pushes_to_itself(self, tmp_path: Path) -> None:
+        """A bench started from the default branch must not track it, or a plain push goes astray."""
         # Given a clone of the shared remote
         origin_path = make_shared_origin(tmp_path)
         dev = clone_of(tmp_path, origin_path, "devA")
         log = tmp_path / "agent.log"
 
-        # When a lane is launched
+        # When a bench is launched
         result = launch_live(
             dev,
-            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanes"), "a-001"],
+            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "benches"), "a-001"],
             fake_harness(tmp_path, log),
             log,
         )
 
         # Then its branch's upstream is its own remote branch
         assert result.returncode == OK
-        upstream = git(tmp_path / "lanes" / "a-001", "rev-parse", "--abbrev-ref", "task/a-001@{upstream}")
+        upstream = git(tmp_path / "benches" / "a-001", "rev-parse", "--abbrev-ref", "task/a-001@{upstream}")
         assert upstream.stdout.strip() == "origin/task/a-001"
 
     @staticmethod
@@ -827,7 +827,7 @@ class TestLaneStartup:
     def go(dev: Path, tmp_path: Path, bin_dir: Path, log: Path, *extra: str, env: dict[str, str] | None = None):
         return launch_live(
             dev,
-            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanes"), *extra, "b-001"],
+            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "benches"), *extra, "b-001"],
             bin_dir,
             log,
             isolated=True,
@@ -841,7 +841,7 @@ class TestLaneStartup:
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log, names=("copilot",))
 
-        # When a lane is launched
+        # When a bench is launched
         result = self.go(dev, tmp_path, bin_dir, log)
 
         # Then it runs on copilot
@@ -855,37 +855,37 @@ class TestLaneStartup:
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log)
 
-        # When a lane is launched
+        # When a bench is launched
         result = self.go(dev, tmp_path, bin_dir, log)
 
         # Then it runs on claude
         assert result.stdout.strip().startswith("LAUNCHED\tb-001\tclaude\tdefault")
 
-    def test_no_installed_harness_skips_the_lane(self, tmp_path: Path) -> None:
+    def test_no_installed_harness_skips_the_bench(self, tmp_path: Path) -> None:
         # Given a machine with no harness
         dev = self.one_task_remote(tmp_path)
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log, names=())
 
-        # When a lane is launched
+        # When a bench is launched
         result = self.go(dev, tmp_path, bin_dir, log)
 
         # Then it is skipped, listing what was looked for
-        assert result.stdout.strip() == f"SKIP\tb-001\tno supported harness on PATH ({ALL_HARNESSES})\nLANES\t0"
+        assert result.stdout.strip() == f"SKIP\tb-001\tno supported harness on PATH ({ALL_HARNESSES})\nBENCHES\t0"
 
     def test_a_harness_somebody_chose_is_never_swapped_for_another(self, tmp_path: Path) -> None:
-        """A lane on a harness nobody asked for would spend an allowance nobody meant to spend."""
+        """A bench on a harness nobody asked for would spend an allowance nobody meant to spend."""
         # Given a mapping choosing copilot on a machine with only claude
         dev = self.one_task_remote(tmp_path)
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log, names=("claude",))
         mapping = write_tiers(tmp_path / "t.conf", conf(build={"harness": "copilot"}))
 
-        # When a lane is launched
-        result = self.go(dev, tmp_path, bin_dir, log, env={"DELIVERY_TIERS": str(mapping)})
+        # When a bench is launched
+        result = self.go(dev, tmp_path, bin_dir, log, env={"ETABLI_TIERS": str(mapping)})
 
         # Then it is skipped and nothing runs
-        assert result.stdout.strip() == "SKIP\tb-001\tcopilot not found on PATH\nLANES\t0"
+        assert result.stdout.strip() == "SKIP\tb-001\tcopilot not found on PATH\nBENCHES\t0"
         assert not log.read_text(encoding="utf-8").strip(), "nothing should have been invoked"
 
     def test_an_unmapped_tier_passes_no_model_flag(self, tmp_path: Path) -> None:
@@ -894,7 +894,7 @@ class TestLaneStartup:
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log)
 
-        # When a lane is launched
+        # When a bench is launched
         self.go(dev, tmp_path, bin_dir, log)
 
         # Then no model flag reaches the harness
@@ -909,8 +909,8 @@ class TestLaneStartup:
         bin_dir = fake_harness(tmp_path, log)
         mapping = write_tiers(tmp_path / "t.conf", conf(build={"harness": harness, "model": "some-model"}))
 
-        # When a lane is launched
-        result = self.go(dev, tmp_path, bin_dir, log, env={"DELIVERY_TIERS": str(mapping)})
+        # When a bench is launched
+        result = self.go(dev, tmp_path, bin_dir, log, env={"ETABLI_TIERS": str(mapping)})
 
         # Then that harness gets that model
         assert f"LAUNCHED\tb-001\t{harness}\tsome-model" in result.stdout
@@ -924,8 +924,8 @@ class TestLaneStartup:
         bin_dir = fake_harness(tmp_path, log)
         mapping = write_tiers(tmp_path / "t.conf", conf(chore={"harness": "copilot", "model": "gpt-6-luna"}))
 
-        # When a chore lane is launched on claude
-        result = self.go(dev, tmp_path, bin_dir, log, "--harness", "claude", env={"DELIVERY_TIERS": str(mapping)})
+        # When a chore bench is launched on claude
+        result = self.go(dev, tmp_path, bin_dir, log, "--harness", "claude", env={"ETABLI_TIERS": str(mapping)})
 
         # Then the copilot model never reaches claude
         assert "LAUNCHED\tb-001\tclaude\tdefault" in result.stdout
@@ -933,7 +933,7 @@ class TestLaneStartup:
         assert "gpt-6-luna" not in log.read_text(encoding="utf-8")
 
     def test_refuses_to_start_without_a_usable_claim_script(self, tmp_path: Path) -> None:
-        """An unclaimed lane is worse than no lane.
+        """An unclaimed bench is worse than no bench.
 
         The claim was once optional and skipped in silence, so a launcher run
         without it started every ready task, printed LAUNCHED for each, and left
@@ -943,7 +943,7 @@ class TestLaneStartup:
         repo = make_repo(tmp_path)
         add_task(repo, "a-001")
 
-        # When a lane is launched
+        # When a bench is launched
         result = launch(repo, ["--claim-script", str(tmp_path / "absent.sh"), "a-001"])
 
         # Then it is a usage error and nothing launches
@@ -965,10 +965,10 @@ class TestLaneStartup:
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log)
 
-        # When a lane is launched
+        # When a bench is launched
         result = launch_live(
             dev,
-            ["--claim-script", str(broken), "--worktree-root", str(tmp_path / "lanes"), "a-001"],
+            ["--claim-script", str(broken), "--worktree-root", str(tmp_path / "benches"), "a-001"],
             bin_dir,
             log,
         )
@@ -991,10 +991,10 @@ class TestLaneStartup:
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log)
 
-        # When a lane is launched
+        # When a bench is launched
         launch_live(
             dev,
-            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanes"), "a-001"],
+            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "benches"), "a-001"],
             bin_dir,
             log,
         )
@@ -1011,10 +1011,10 @@ class TestLaneStartup:
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log)
 
-        # When a lane is launched
+        # When a bench is launched
         launch_live(
             dev,
-            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanes"), "a-001"],
+            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "benches"), "a-001"],
             bin_dir,
             log,
         )
@@ -1022,10 +1022,10 @@ class TestLaneStartup:
         # Then the session gets the deny rules
         assert "terraform apply" in session_log(log)
 
-    def test_lets_a_claude_lane_run_shell_commands(self, tmp_path: Path) -> None:
+    def test_lets_a_claude_bench_run_shell_commands(self, tmp_path: Path) -> None:
         """acceptEdits alone denies every shell command in -p mode.
 
-        The lane then cannot run a single test, and still exits 0. See
+        The bench then cannot run a single test, and still exits 0. See
         docs/harness-validation.md, test 6.
         """
         # Given a clone of the shared remote
@@ -1034,10 +1034,18 @@ class TestLaneStartup:
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log)
 
-        # When a claude lane is launched
+        # When a claude bench is launched
         launch_live(
             dev,
-            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanes"), "--harness", "claude", "a-001"],
+            [
+                "--claim-script",
+                str(CLAIM),
+                "--worktree-root",
+                str(tmp_path / "benches"),
+                "--harness",
+                "claude",
+                "a-001",
+            ],
             bin_dir,
             log,
         )
@@ -1072,14 +1080,14 @@ class TestLaneStartup:
             bin_dir = fake_harness(root, log)
             flags = ["--no-web"] if web == "off" else []
 
-            # When a lane is launched
+            # When a bench is launched
             launch_live(
                 dev,
                 [
                     "--claim-script",
                     str(CLAIM),
                     "--worktree-root",
-                    str(root / "lanes"),
+                    str(root / "benches"),
                     "--harness",
                     harness,
                     *flags,
@@ -1098,24 +1106,24 @@ class TestLaneStartup:
                 assert web_off in recorded
                 assert "--allowedTools Bash WebFetch" not in recorded
 
-    def test_asks_the_lane_for_a_report(self, tmp_path: Path) -> None:
-        """The report becomes the pull request body, so the lane has to write it."""
+    def test_asks_the_bench_for_a_report(self, tmp_path: Path) -> None:
+        """The report becomes the pull request body, so the bench has to write it."""
         # Given a clone of the shared remote
         origin_path = make_shared_origin(tmp_path)
         dev = clone_of(tmp_path, origin_path, "devA")
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log)
 
-        # When a lane is launched
+        # When a bench is launched
         launch_live(
             dev,
-            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanes"), "a-001"],
+            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "benches"), "a-001"],
             bin_dir,
             log,
         )
 
         # Then the session is asked for the report
-        assert "a-001.md --report .lane-report.md" in session_log(log)
+        assert "a-001.md --report .bench-report.md" in session_log(log)
 
     def test_a_clean_session_ends_in_a_draft_pull_request(self, tmp_path: Path) -> None:
         """The session leaves its change uncommitted; the launcher publishes it."""
@@ -1125,10 +1133,10 @@ class TestLaneStartup:
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log, edits=True)
 
-        # When a lane is launched
+        # When a bench is launched
         launch_live(
             dev,
-            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanes"), "a-001"],
+            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "benches"), "a-001"],
             bin_dir,
             log,
         )
@@ -1137,41 +1145,69 @@ class TestLaneStartup:
         gh_log = tmp_path / "gh.log"
         deadline = time.monotonic() + 20
         while "pr create" not in (gh_log.read_text(encoding="utf-8") if gh_log.exists() else ""):
-            assert time.monotonic() < deadline, "the lane was never published"
+            assert time.monotonic() < deadline, "the bench was never published"
             time.sleep(0.2)
         assert "--draft" in gh_log.read_text(encoding="utf-8")
         files = git(origin_path, "ls-tree", "-r", "--name-only", "task/a-001").stdout.split()
-        assert "lane-output.txt" in files
+        assert "bench-output.txt" in files
 
     def test_a_session_that_fails_at_startup_gives_its_task_back(self, tmp_path: Path) -> None:
-        """Otherwise the task stays held by a lane that never ran."""
+        """Otherwise the task stays held by a bench that never ran."""
         # Given a session that exits 1
         origin_path = make_shared_origin(tmp_path)
         dev = clone_of(tmp_path, origin_path, "devA")
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log, fails=True)
-        logs = tmp_path / "lanelogs"
+        logs = tmp_path / "benchlogs"
 
-        # When a lane is launched
+        # When a bench is launched
         launch_live(
             dev,
-            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanes"), "--log-dir", str(logs), "a-001"],
+            [
+                "--claim-script",
+                str(CLAIM),
+                "--worktree-root",
+                str(tmp_path / "benches"),
+                "--log-dir",
+                str(logs),
+                "a-001",
+            ],
             bin_dir,
             log,
         )
 
         # Then the claim, worktree and pull request are all gone
-        lane_log = logs / "a-001.log"
+        bench_log = logs / "a-001.log"
         deadline = time.monotonic() + 20
-        while "RELEASED" not in (lane_log.read_text(encoding="utf-8") if lane_log.exists() else ""):
+        while "RELEASED" not in (bench_log.read_text(encoding="utf-8") if bench_log.exists() else ""):
             assert time.monotonic() < deadline, "the claim was never released"
             time.sleep(0.2)
         refs = git(origin_path, "for-each-ref", "--format=%(refname)", "refs/heads/task/").stdout
         assert "refs/heads/task/a-001" not in refs
-        assert not (tmp_path / "lanes" / "a-001").exists()
+        assert not (tmp_path / "benches" / "a-001").exists()
         assert not (tmp_path / "gh.log").exists(), "a failed session must not be published"
 
-    def test_a_task_that_runs_alone_waits_for_another_developers_lane(self, tmp_path: Path) -> None:
+    def test_logs_go_beside_the_worktrees_by_default(self, tmp_path: Path) -> None:
+        """Outside every repository, so nothing needs ignoring and a log outlives its worktree."""
+        # Given a session that fails at startup, and no --log-dir
+        origin_path = make_shared_origin(tmp_path)
+        dev = clone_of(tmp_path, origin_path, "devA")
+        log = tmp_path / "agent.log"
+        bin_dir = fake_harness(tmp_path, log, fails=True)
+        root = tmp_path / "benches"
+
+        # When a bench is launched
+        launch_live(dev, ["--claim-script", str(CLAIM), "--worktree-root", str(root), "a-001"], bin_dir, log)
+
+        # Then its log is in .logs under the worktree root, and the checkout holds none
+        bench_log = root / ".logs" / "a-001.log"
+        deadline = time.monotonic() + 20
+        while "RELEASED" not in (bench_log.read_text(encoding="utf-8") if bench_log.exists() else ""):
+            assert time.monotonic() < deadline, "the bench log never appeared beside the worktrees"
+            time.sleep(0.2)
+        assert not (dev / ".benches").exists()
+
+    def test_a_task_that_runs_alone_waits_for_another_developers_bench(self, tmp_path: Path) -> None:
         """The batch is not the whole picture: in-flight work lives on the remote."""
         # Given devA holding a-001, and a-002 that runs alone
         origin_path = make_shared_origin(tmp_path)
@@ -1194,7 +1230,7 @@ class TestLaneStartup:
             latecomer, ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lB"), "a-002"], bin_dir, log
         )
 
-        # Then it waits for devA's lane
+        # Then it waits for devA's bench
         assert "SKIP\ta-002\truns alone, and tasks are in flight: a-001" in result.stdout
         assert not (tmp_path / "lB" / "a-002").exists()
 
@@ -1223,11 +1259,11 @@ class TestLaneStartup:
         # Then it waits
         assert "SKIP\ta-001\ta-002 runs alone and is in flight" in result.stdout
 
-    def test_a_lane_starts_from_the_remote_not_a_stale_checkout(self, tmp_path: Path) -> None:
-        """A dependency merged on the forge must be in the next lane's base.
+    def test_a_bench_starts_from_the_remote_not_a_stale_checkout(self, tmp_path: Path) -> None:
+        """A dependency merged on the forge must be in the next bench's base.
 
         Nothing updates the launching checkout when a pull request merges, so a
-        lane branched from its HEAD lacked the code it depended on, and its pull
+        bench branched from its HEAD lacked the code it depended on, and its pull
         request conflicted. Found by running the follow loop on a real task set.
         """
         # Given a dependency merged on the remote since the clone
@@ -1241,14 +1277,14 @@ class TestLaneStartup:
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log)
 
-        # When a lane is launched
+        # When a bench is launched
         result = launch_live(
-            dev, ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanes"), "a-001"], bin_dir, log
+            dev, ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "benches"), "a-001"], bin_dir, log
         )
 
         # Then its worktree has the dependency
         assert result.returncode == OK, result.stdout + result.stderr
-        assert (tmp_path / "lanes" / "a-001" / "dependency.py").exists()
+        assert (tmp_path / "benches" / "a-001" / "dependency.py").exists()
 
     def test_a_repository_without_origin_head_still_launches(self, tmp_path: Path) -> None:
         """A repository created locally and pushed has no origin/HEAD; a clone does."""
@@ -1259,31 +1295,31 @@ class TestLaneStartup:
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log)
 
-        # When a lane is launched
+        # When a bench is launched
         result = launch_live(
-            dev, ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanes"), "a-001"], bin_dir, log
+            dev, ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "benches"), "a-001"], bin_dir, log
         )
 
         # Then its worktree exists
         assert result.returncode == OK, result.stdout + result.stderr
-        assert (tmp_path / "lanes" / "a-001").is_dir()
+        assert (tmp_path / "benches" / "a-001").is_dir()
 
-    def test_writes_a_session_log_for_the_lane(self, tmp_path: Path) -> None:
+    def test_writes_a_session_log_for_the_bench(self, tmp_path: Path) -> None:
         # Given a clone of the shared remote
         origin_path = make_shared_origin(tmp_path)
         dev = clone_of(tmp_path, origin_path, "devA")
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log)
-        logs = tmp_path / "lanelogs"
+        logs = tmp_path / "benchlogs"
 
-        # When a lane is launched with a log directory
+        # When a bench is launched with a log directory
         launch_live(
             dev,
             [
                 "--claim-script",
                 str(CLAIM),
                 "--worktree-root",
-                str(tmp_path / "lanes"),
+                str(tmp_path / "benches"),
                 "--log-dir",
                 str(logs),
                 "a-001",
@@ -1292,7 +1328,7 @@ class TestLaneStartup:
             log,
         )
 
-        # Then the lane's log is there
+        # Then the bench's log is there
         assert (logs / "a-001.log").exists()
 
     def test_claims_the_task_on_the_remote(self, tmp_path: Path) -> None:
@@ -1302,10 +1338,10 @@ class TestLaneStartup:
         log = tmp_path / "agent.log"
         bin_dir = fake_harness(tmp_path, log)
 
-        # When a lane is launched
+        # When a bench is launched
         launch_live(
             dev,
-            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanes"), "a-001"],
+            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "benches"), "a-001"],
             bin_dir,
             log,
         )
@@ -1325,7 +1361,7 @@ class TestLaneStartup:
 
         launch_live(
             holder,
-            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanesA"), "a-001"],
+            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "benchesA"), "a-001"],
             bin_dir,
             log,
         )
@@ -1333,20 +1369,20 @@ class TestLaneStartup:
         # When devB launches it too
         result = launch_live(
             latecomer,
-            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanesB"), "a-001"],
+            ["--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "benchesB"), "a-001"],
             bin_dir,
             log,
         )
 
         # Then devB is left with no worktree or branch
-        assert result.returncode == NO_LANES
+        assert result.returncode == NO_BENCHES
         assert "already claimed" in result.stdout
-        assert not (tmp_path / "lanesB" / "a-001").exists()
+        assert not (tmp_path / "benchesB" / "a-001").exists()
         assert "task/a-001" not in git(latecomer, "branch", "--list").stdout
 
 
-def test_refuses_to_launch_without_delivery_implement_beside_it(tmp_path: Path) -> None:
-    """A lane is told to follow etabli-implement; without it the session would run with no skill."""
+def test_refuses_to_launch_without_etabli_implement_beside_it(tmp_path: Path) -> None:
+    """A bench is told to follow etabli-implement; without it the session would run with no skill."""
     # Given an install without etabli-implement
     skills = tmp_path / "skills"
     shutil.copytree(SKILLS, skills)
@@ -1354,7 +1390,7 @@ def test_refuses_to_launch_without_delivery_implement_beside_it(tmp_path: Path) 
 
     # When the launcher runs from it
     result = subprocess.run(  # noqa: S603
-        [SH, str(skills / "etabli-orchestrator" / "scripts" / "launch-lanes.sh"), "--dry-run", "a-001"],
+        [SH, str(skills / "etabli-orchestrator" / "scripts" / "launch-benches.sh"), "--dry-run", "a-001"],
         cwd=tmp_path,
         capture_output=True,
         text=True,
@@ -1374,7 +1410,7 @@ class TestRefineSelection:
 
     def rows(self, repo: Path, tmp_path: Path, mapping: str, *args: str) -> list[list[str]]:
         tiers = write_tiers(tmp_path / "tiers.conf", mapping)
-        result = launch(repo, ["--dry-run", *args], env_extra={"DELIVERY_TIERS": str(tiers)})
+        result = launch(repo, ["--dry-run", *args], env_extra={"ETABLI_TIERS": str(tiers)})
         assert result.returncode == OK, result.stderr
         return [line.split("\t") for line in result.stdout.splitlines() if line.startswith("WOULD-LAUNCH")]
 
@@ -1463,7 +1499,7 @@ class TestRefineSelection:
 
 
 class TestRefineSession:
-    """A lane is two sessions: etabli-implement, then etabli-refine on its change."""
+    """A bench is two sessions: etabli-implement, then etabli-refine on its change."""
 
     def run(
         self,
@@ -1473,18 +1509,18 @@ class TestRefineSession:
         forced: str | None = "claude",
         **harness: object,
     ) -> tuple[Path, Path]:
-        """Run one lane; ``forced`` is the --harness value, and None leaves the choice to the tiers alone."""
+        """Run one bench; ``forced`` is the --harness value, and None leaves the choice to the tiers alone."""
         origin_path = make_shared_origin(tmp_path)
         dev = clone_of(tmp_path, origin_path, "devA")
         log = tmp_path / "agent.log"
-        logs = tmp_path / "lanelogs"
+        logs = tmp_path / "benchlogs"
         env = {}
         if mapping is not None:
-            env["DELIVERY_TIERS"] = str(write_tiers(tmp_path / "tiers.conf", mapping))
+            env["ETABLI_TIERS"] = str(write_tiers(tmp_path / "tiers.conf", mapping))
         launch_live(
             dev,
             [
-                "--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "lanes"),
+                "--claim-script", str(CLAIM), "--worktree-root", str(tmp_path / "benches"),
                 "--log-dir", str(logs), *(["--harness", forced] if forced else []), *extra, "a-001",
             ],
             fake_harness(tmp_path, log, **harness),
@@ -1492,11 +1528,11 @@ class TestRefineSession:
             isolated=forced is None,
             env_extra=env,
         )  # fmt: skip
-        lane_log = logs / "a-001.log"
-        wait_for(lambda: lane_log.exists() and any(
-            word in lane_log.read_text(encoding="utf-8") for word in ("PUBLISHED", "NOTHING", "RELEASED", "ERROR")
+        bench_log = logs / "a-001.log"
+        wait_for(lambda: bench_log.exists() and any(
+            word in bench_log.read_text(encoding="utf-8") for word in ("PUBLISHED", "NOTHING", "RELEASED", "ERROR")
         ))  # fmt: skip
-        return log, lane_log
+        return log, bench_log
 
     @staticmethod
     def prompts(log: Path) -> list[str]:
@@ -1506,24 +1542,24 @@ class TestRefineSession:
         # Given build on sonnet and plan on opus, and a session that leaves a change
         mapping = conf(build={"harness": "claude", "model": "sonnet"}, plan={"harness": "claude", "model": "opus"})
 
-        # When a lane runs
-        log, lane_log = self.run(tmp_path, mapping=mapping, edits=True)
+        # When a bench runs
+        log, bench_log = self.run(tmp_path, mapping=mapping, edits=True)
 
-        # Then implement runs on sonnet, refine on opus, then the lane publishes
+        # Then implement runs on sonnet, refine on opus, then the bench publishes
         prompts = self.prompts(log)
         assert [p.split()[1] for p in prompts] == ["/etabli-implement", "/etabli-refine"]
-        assert prompts[0].startswith("-p /etabli-implement delivery/tasks/a-001.md --report .lane-report.md")
+        assert prompts[0].startswith("-p /etabli-implement specs/tasks/a-001.md --report .bench-report.md")
         assert "--model sonnet" in prompts[0]
-        assert prompts[1].startswith("-p /etabli-refine delivery/tasks/a-001.md --report .lane-report.md")
+        assert prompts[1].startswith("-p /etabli-refine specs/tasks/a-001.md --report .bench-report.md")
         assert "--model opus" in prompts[1]
-        assert "REFINE\tclaude\topus" in lane_log.read_text(encoding="utf-8")
-        assert "PUBLISHED" in lane_log.read_text(encoding="utf-8")
+        assert "REFINE\tclaude\topus" in bench_log.read_text(encoding="utf-8")
+        assert "PUBLISHED" in bench_log.read_text(encoding="utf-8")
 
     def test_an_advisor_without_a_model_stays_an_advisor(self, tmp_path: Path) -> None:
         # Given a tier above with an advisor but no model
         mapping = conf(build={"harness": "claude", "model": "sonnet"}, plan={"harness": "claude", "advisor": "opus"})
 
-        # When a lane runs
+        # When a bench runs
         log, _ = self.run(tmp_path, mapping=mapping, edits=True)
 
         # Then the review gets the advisor and no model
@@ -1532,49 +1568,49 @@ class TestRefineSession:
         assert "--model" not in refine
 
     @pytest.mark.parametrize("above", ["copilot", "custom"])
-    def test_the_lane_harness_reviews_when_the_tier_above_cannot_run(self, tmp_path: Path, above: str) -> None:
-        """copilot is not installed, and custom has no DELIVERY_LANE_CMD."""
+    def test_the_bench_harness_reviews_when_the_tier_above_cannot_run(self, tmp_path: Path, above: str) -> None:
+        """copilot is not installed, and custom has no ETABLI_BENCH_CMD."""
         # Given a tier above on a harness that cannot run here
         mapping = conf(build={"harness": "claude", "model": "sonnet"}, plan={"harness": above, "model": "opus"})
 
-        # When a lane runs
-        log, lane_log = self.run(tmp_path, mapping=mapping, forced=None, names=("claude",), edits=True)
+        # When a bench runs
+        log, bench_log = self.run(tmp_path, mapping=mapping, forced=None, names=("claude",), edits=True)
 
-        # Then the lane's own harness reviews, on its default model
+        # Then the bench's own harness reviews, on its default model
         assert [p.split()[1] for p in self.prompts(log)] == ["/etabli-implement", "/etabli-refine"]
-        assert "REFINE\tclaude\tdefault" in lane_log.read_text(encoding="utf-8")
+        assert "REFINE\tclaude\tdefault" in bench_log.read_text(encoding="utf-8")
 
     def test_nothing_to_refine_when_the_implementation_left_no_change(self, tmp_path: Path) -> None:
-        # When a lane runs and leaves no change
-        log, lane_log = self.run(tmp_path)
+        # When a bench runs and leaves no change
+        log, bench_log = self.run(tmp_path)
 
         # Then no refinement runs
         assert [p.split()[1] for p in self.prompts(log)] == ["/etabli-implement"]
-        assert "REFINE" not in lane_log.read_text(encoding="utf-8")
+        assert "REFINE" not in bench_log.read_text(encoding="utf-8")
 
     def test_no_refine_publishes_the_implementation_as_it_is(self, tmp_path: Path) -> None:
-        # When a lane runs with --no-refine
-        log, lane_log = self.run(tmp_path, "--no-refine", edits=True)
+        # When a bench runs with --no-refine
+        log, bench_log = self.run(tmp_path, "--no-refine", edits=True)
 
-        # Then only implement runs, and the lane publishes
+        # Then only implement runs, and the bench publishes
         assert [p.split()[1] for p in self.prompts(log)] == ["/etabli-implement"]
-        assert "PUBLISHED" in lane_log.read_text(encoding="utf-8")
+        assert "PUBLISHED" in bench_log.read_text(encoding="utf-8")
 
     def test_a_failed_refinement_still_publishes_and_says_so(self, tmp_path: Path) -> None:
         """The implementation was validated; losing it to a failed review would waste it."""
-        # When a lane runs and its refinement fails
-        _, lane_log = self.run(tmp_path, edits=True, fails_on="etabli-refine")
+        # When a bench runs and its refinement fails
+        _, bench_log = self.run(tmp_path, edits=True, fails_on="etabli-refine")
 
-        # Then the lane publishes, and the log and report say it failed
-        text = lane_log.read_text(encoding="utf-8")
+        # Then the bench publishes, and the log and report say it failed
+        text = bench_log.read_text(encoding="utf-8")
         assert "REFINE-FAILED\t1" in text
         assert "PUBLISHED" in text
-        report = (tmp_path / "lanes" / "a-001" / ".lane-report.md").read_text(encoding="utf-8")
+        report = (tmp_path / "benches" / "a-001" / ".bench-report.md").read_text(encoding="utf-8")
         assert "## Refinement" in report
         assert "failed (exit 1)" in report
 
 
-def test_refuses_to_launch_without_delivery_refine_beside_it(tmp_path: Path) -> None:
+def test_refuses_to_launch_without_etabli_refine_beside_it(tmp_path: Path) -> None:
     # Given an install without etabli-refine
     skills = tmp_path / "skills"
     shutil.copytree(SKILLS, skills)
@@ -1582,7 +1618,7 @@ def test_refuses_to_launch_without_delivery_refine_beside_it(tmp_path: Path) -> 
 
     # When the launcher runs from it
     result = subprocess.run(  # noqa: S603
-        [SH, str(skills / "etabli-orchestrator" / "scripts" / "launch-lanes.sh"), "--dry-run", "a-001"],
+        [SH, str(skills / "etabli-orchestrator" / "scripts" / "launch-benches.sh"), "--dry-run", "a-001"],
         cwd=tmp_path,
         capture_output=True,
         text=True,

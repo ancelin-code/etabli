@@ -2,19 +2,20 @@
 
 **Status:** accepted
 **Date:** 2026-10-22
+**Amended:** 2026-11-04, milestones became the default of a full workflow
 
 ## Context
 
 A pilot project, a self-hosted memory server, has about eighty approved
-requirements in one `delivery/prd.md`. The document is deliberately complete,
-so lanes can build without asking questions. The team still wants to deliver
+requirements in one `specs/prd.md`. The document is deliberately complete,
+so benches can build without asking questions. The team still wants to deliver
 in milestones: first a walking skeleton that runs the riskiest parts (remote
 connector, sign-in, deployment) end to end, then full retrieval, then team
 features, then the rest. After each, they want to stop and look at what was
 learned. That might lead them to revise the requirements or a decision record,
 or to cut the next slice.
 
-The kit had nothing between project and epic. `etabli-decompose` cut the
+Établi had nothing between project and epic. `etabli-decompose` cut the
 whole approved scope at once, so lessons from the first slice could not shape
 the second. `where.sh` and `follow.sh` saw one flat task set, which reads as
 complete once everything is merged. A task could not say that it delivers only
@@ -23,11 +24,14 @@ what was left of each requirement.
 
 ## Decision
 
-A **milestone** is an optional, ordered group of epics with an observable exit
-criterion. Requirements and the design spine stay project-wide and are written
-in full up front; only decomposition and execution are incremental.
+A **milestone** is an ordered group of epics with an observable exit
+criterion. It is the default of a full workflow, which is cut one milestone at a
+time; only the user may decide against milestones, and the summary then records
+it as a `**Milestones:** none` line. Requirements and the design spine stay
+project-wide and are written in full up front; only decomposition and
+execution are incremental.
 
-- **The plan** is a Milestones section of `delivery/decomposition.md`. Each
+- **The plan** is a Milestones section of `specs/decomposition.md`. Each
   milestone has an `**Exit:**` line, a `**Requirements:**` line with the
   requirement ids it targets, and an `**Epics:**` line that stays empty until
   the milestone is cut.
@@ -35,7 +39,7 @@ in full up front; only decomposition and execution are incremental.
   Only that milestone, and the closed ones before it, have task files. The
   validator rejects a task of a later milestone, and it rejects a cut that
   leaves one of the current milestone's targets uncovered.
-- **The gate** is an artifact, `delivery/milestones/<slug>.md`. It records
+- **The gate** is an artifact, `specs/milestones/<slug>.md`. It records
   whether the exit criterion held, the coverage, what was learned, and whether
   to continue or revise. Approving it closes the milestone. Cutting the next
   milestone puts the summary back to draft, and the existing decomposition gate
@@ -52,7 +56,9 @@ in full up front; only decomposition and execution are incremental.
   boundary, `follow.sh` stops with `MILESTONE` instead of `COMPLETE`.
 
 A plan without a Milestones section, and tasks without `## Covers`, take
-exactly the code paths they took before.
+exactly the code paths they took before. The validator warns, without failing,
+when the summary has neither the section nor that line. It cannot tell who wrote
+the line, so the user's decision is held by the skill, not checked.
 
 ## Alternatives considered
 
@@ -65,7 +71,7 @@ exactly the code paths they took before.
   file. It was rejected because it merges two gates, a look back at a finished
   slice and approval of the next cut, and reopens an approved summary just to
   record a retrospective.
-- **A separate plan file, `delivery/milestones.md`.** The grouping of epics
+- **A separate plan file, `specs/milestones.md`.** The grouping of epics
   already lives in the summary, and ADR-003 rejected per-group files for the
   drift they invite. A milestone is one more level of the same grouping.
 - **A `milestone:` field on every task.** This would be a third copy of a
@@ -73,7 +79,7 @@ exactly the code paths they took before.
   line.
 - **One requirements document or decomposition per milestone.** This breaks one
   requirements document per project, and the requirements of later milestones
-  are exactly what lanes of earlier ones must not contradict.
+  are exactly what benches of earlier ones must not contradict.
 - **Coverage declared in the requirements.** This would reopen an approved
   stage-A document on every cut, the reason ADR-003 kept the feature index out
   of it.

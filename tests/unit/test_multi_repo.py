@@ -17,14 +17,14 @@ from pathlib import Path
 import pytest
 
 from tests.conftest import SH
-from tests.unit.test_delivery_decompose_scripts import validate, write_summary
+from tests.unit.test_etabli_decompose_scripts import validate, write_summary
 
 SKILLS = Path(__file__).resolve().parents[2] / ".agents" / "skills"
 STATUS = SKILLS / "etabli-status" / "scripts" / "status.sh"
 SNAPSHOT = SKILLS / "etabli-status" / "scripts" / "snapshot.sh"
 CLAIM = SKILLS / "etabli-status" / "scripts" / "claim.sh"
-LAUNCH = SKILLS / "etabli-orchestrator" / "scripts" / "launch-lanes.sh"
-PUBLISH = SKILLS / "etabli-orchestrator" / "scripts" / "publish-lane.sh"
+LAUNCH = SKILLS / "etabli-orchestrator" / "scripts" / "launch-benches.sh"
+PUBLISH = SKILLS / "etabli-orchestrator" / "scripts" / "publish-bench.sh"
 WHERE = SKILLS / "etabli-orchestrator" / "scripts" / "where.sh"
 
 # Exit codes: status.sh reports an environment error as 1, the validator a
@@ -73,7 +73,7 @@ def use_case(tmp_path: Path) -> tuple[Path, Path]:
 
 
 def task(home: Path, task_id: str, *, repo: str | None = None, depends_on: str = "", review: str = "") -> None:
-    tasks = home / "delivery" / "tasks"
+    tasks = home / "specs" / "tasks"
     tasks.mkdir(parents=True, exist_ok=True)
     (tasks / f"{task_id}.md").write_text(
         "---\n"
@@ -96,7 +96,7 @@ def fake_gh(
 
     ``merged`` maps a repository to its merged task ids; ``in_review`` maps a
     repository to {task id: pull request number}. Anything else gets the
-    answers a publishing lane needs: no pull request yet, then a created one.
+    answers a publishing bench needs: no pull request yet, then a created one.
     """
     bin_dir = tmp_path / "ghbin"
     bin_dir.mkdir(exist_ok=True)
@@ -232,7 +232,7 @@ class TestStatusAcrossRepositories:
 
 
 class TestLaunchAcrossRepositories:
-    def test_a_dry_run_names_the_repository_of_each_lane(self, tmp_path: Path, use_case: tuple[Path, Path]) -> None:
+    def test_a_dry_run_names_the_repository_of_each_bench(self, tmp_path: Path, use_case: tuple[Path, Path]) -> None:
         # Given one home task and one api task
         home, _ = use_case
         task(home, "h-001")
@@ -241,12 +241,12 @@ class TestLaunchAcrossRepositories:
         # When a dry run plans both
         result = run(LAUNCH, ["--dry-run", "h-001", "a-001"], home, fake_gh(tmp_path))
 
-        # Then each lane names its repository
-        lanes = [line.split("\t") for line in result.stdout.splitlines() if line.startswith("WOULD-LAUNCH")]
-        assert [(lane[1], lane[-1]) for lane in lanes] == [("h-001", "home"), ("a-001", "api")]
+        # Then each bench names its repository
+        benches = [line.split("\t") for line in result.stdout.splitlines() if line.startswith("WOULD-LAUNCH")]
+        assert [(bench[1], bench[-1]) for bench in benches] == [("h-001", "home"), ("a-001", "api")]
 
     @pytest.mark.parametrize("harness", ["claude", "copilot"])
-    def test_a_lane_works_in_its_repository_and_reads_the_plan_here(
+    def test_a_bench_works_in_its_repository_and_reads_the_plan_here(
         self, tmp_path: Path, use_case: tuple[Path, Path], harness: str
     ) -> None:
         # Given an api task planned in home, and a harness that logs where it runs
@@ -258,12 +258,12 @@ class TestLaunchAcrossRepositories:
             '#!/usr/bin/env bash\nprintf "%s\\n" "$PWD" "$*" >> "$FAKE_LOG"\n', encoding="utf-8"
         )
         (bin_dir / harness).chmod(0o755)
-        lanes = tmp_path / "uc" / "lanes"
+        benches = tmp_path / "uc" / "benches"
 
-        # When its lane is launched from home
+        # When its bench is launched from home
         result = run(
             LAUNCH,
-            ["--harness", harness, "--worktree-root", "../lanes", "a-001"],
+            ["--harness", harness, "--worktree-root", "../benches", "a-001"],
             home,
             bin_dir,
             FAKE_LOG=str(log),
@@ -279,13 +279,13 @@ class TestLaunchAcrossRepositories:
             assert time.monotonic() < deadline, "the harness was never invoked"
             time.sleep(0.1)
         recorded = log.read_text(encoding="utf-8")
-        assert str(lanes.resolve() / "a-001") in recorded or str(lanes / "a-001") in recorded
+        assert str(benches.resolve() / "a-001") in recorded or str(benches / "a-001") in recorded
         assert f"--add-dir {home}" in recorded
-        assert str(home / "delivery" / "tasks" / "a-001.md") in recorded
+        assert str(home / "specs" / "tasks" / "a-001.md") in recorded
         if harness == "copilot":
             assert "etabli-implement/SKILL.md" in recorded
 
-    def test_a_lane_in_this_repository_gets_no_extra_directory(
+    def test_a_bench_in_this_repository_gets_no_extra_directory(
         self, tmp_path: Path, use_case: tuple[Path, Path]
     ) -> None:
         # Given a home task, and a harness that logs its arguments
@@ -299,8 +299,8 @@ class TestLaunchAcrossRepositories:
         (bin_dir / "claude").write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$FAKE_LOG"\n', encoding="utf-8")
         (bin_dir / "claude").chmod(0o755)
 
-        # When its lane is launched
-        run(LAUNCH, ["--harness", "claude", "--worktree-root", "../lanes", "h-001"], home, bin_dir, FAKE_LOG=str(log))
+        # When its bench is launched
+        run(LAUNCH, ["--harness", "claude", "--worktree-root", "../benches", "h-001"], home, bin_dir, FAKE_LOG=str(log))
 
         # Then the harness gets the plain skill prompt and no extra directory
         deadline = time.monotonic() + 10
@@ -309,31 +309,31 @@ class TestLaunchAcrossRepositories:
             time.sleep(0.1)
         recorded = log.read_text(encoding="utf-8")
         assert "--add-dir" not in recorded
-        assert "/etabli-implement delivery/tasks/h-001.md" in recorded
+        assert "/etabli-implement specs/tasks/h-001.md" in recorded
 
 
 class TestPublishAcrossRepositories:
     def test_the_commit_and_pull_request_link_the_task_where_it_is_planned(
         self, tmp_path: Path, use_case: tuple[Path, Path]
     ) -> None:
-        # Given a claimed api lane with a change, planned in home
+        # Given a claimed api bench with a change, planned in home
         home, api = use_case
         task(home, "a-001", repo="api")
         git(home, "remote", "set-url", "origin", "git@example.test:org/home.git")
         git(api, "checkout", "-q", "-b", "task/a-001")
         git(api, "commit", "-q", "--allow-empty", "-m", "chore(claim): task a-001 [devA]")
         (api / "endpoint.py").write_text("x = 1\n", encoding="utf-8")
-        (api / ".lane-report.md").write_text("Did it.\n", encoding="utf-8")
+        (api / ".bench-report.md").write_text("Did it.\n", encoding="utf-8")
         bin_dir = fake_gh(tmp_path)
 
         # When it is published
-        result = run(PUBLISH, [str(home / "delivery" / "tasks" / "a-001.md")], api, bin_dir)
+        result = run(PUBLISH, [str(home / "specs" / "tasks" / "a-001.md")], api, bin_dir)
 
         # Then the commit and the body link the task file in home
         assert result.returncode == 0, result.stderr
-        link = "https://example.test/org/home/blob/HEAD/delivery/tasks/a-001.md"
+        link = "https://example.test/org/home/blob/HEAD/specs/tasks/a-001.md"
         assert f"Task: {link}" in git(api, "log", "-1", "--format=%b")
-        assert f"Task: [delivery/tasks/a-001.md]({link})" in (bin_dir / "body.md").read_text(encoding="utf-8")
+        assert f"Task: [specs/tasks/a-001.md]({link})" in (bin_dir / "body.md").read_text(encoding="utf-8")
 
 
 class TestValidateAcrossRepositories:
@@ -341,10 +341,10 @@ class TestValidateAcrossRepositories:
         # Given an api task, with api cloned beside home
         home, _ = use_case
         task(home, "a-001", repo="api")
-        write_summary(home / "delivery" / "tasks")
+        write_summary(home / "specs" / "tasks")
 
         # When the task set is validated
-        result = validate(home / "delivery" / "tasks")
+        result = validate(home / "specs" / "tasks")
 
         # Then it is valid
         assert result.returncode == 0
@@ -353,10 +353,10 @@ class TestValidateAcrossRepositories:
         # Given a task for a repository not cloned beside home
         home, _ = use_case
         task(home, "w-001", repo="webapp")
-        write_summary(home / "delivery" / "tasks")
+        write_summary(home / "specs" / "tasks")
 
         # When the task set is validated
-        result = validate(home / "delivery" / "tasks")
+        result = validate(home / "specs" / "tasks")
 
         # Then it is rejected, saying where to clone it
         assert result.returncode == INVALID
@@ -367,10 +367,10 @@ class TestValidateAcrossRepositories:
         # Given a task whose repo is a path, not a name
         home, _ = use_case
         task(home, "a-001", repo=bad)
-        write_summary(home / "delivery" / "tasks")
+        write_summary(home / "specs" / "tasks")
 
         # When the task set is validated
-        result = validate(home / "delivery" / "tasks")
+        result = validate(home / "specs" / "tasks")
 
         # Then it is rejected
         assert result.returncode == INVALID
@@ -383,10 +383,10 @@ class TestReviewAcrossRepositories:
     ) -> None:
         # Given a task in review in api and another in home
         home, _ = use_case
-        (home / "delivery").mkdir(exist_ok=True)
-        (home / "delivery" / "prd.md").write_text("# PRD\n\n**Status:** approved\n", encoding="utf-8")
-        (home / "delivery" / "decomposition.md").write_text(
-            "# Plan\n\n**Status:** approved\n\n**Run as:** lanes\n", encoding="utf-8"
+        (home / "specs").mkdir(exist_ok=True)
+        (home / "specs" / "prd.md").write_text("# PRD\n\n**Status:** approved\n", encoding="utf-8")
+        (home / "specs" / "decomposition.md").write_text(
+            "# Plan\n\n**Status:** approved\n\n**Run as:** benches\n", encoding="utf-8"
         )
         task(home, "a-001", repo="api")
         task(home, "h-001")

@@ -1,10 +1,10 @@
 # Agent Instructions for the etabli repository
 
-This repository holds the AI-native **Établi**: a family of Agent Skills
-that route a project from requirements through parallel implementation lanes to
+This repository holds **Établi**: a family of Agent Skills
+that route a project from requirements through parallel implementation benches to
 draft pull requests.
 
-The kit is exploratory. Prefer deleting a rule over defending it.
+Établi is exploratory. Prefer deleting a rule over defending it.
 
 ## Project overview
 
@@ -19,17 +19,18 @@ The kit is exploratory. Prefer deleting a rule over defending it.
 - `.agents/skills/<skill-name>/SKILL.md`: skill entrypoint
 - `.agents/skills/<skill-name>/references/`: detail loaded on demand
 - `.agents/skills/<skill-name>/scripts/`: deterministic helpers, non-executable
-- `docs/`: maintainer records, not installed with the skills and not loaded at
-  run time
+- `docs/`: the user documentation site, built with Zensical from
+  `zensical.toml`, and maintainer records kept out of the site. Nothing there
+  is installed with the skills or loaded at run time
 - `docs/decisions/`: numbered decision records, `ADR-<nnn>-<slug>.md`
 - `tests/unit/`: behavioural tests driving the `sh` helpers
 - `.mise/scripts/`: repository validation helpers
 - `.github/workflows/`: CI
 
-## The rule that governs this kit
+## The rule that governs Établi
 
 A skill must **beat vanilla harness behavior** on its task, or be free. A rule
-appears only if removing it measurably degrades results. This kit exists because
+appears only if removing it measurably degrades results. Établi exists because
 a previous skill lost to an unassisted harness by adding ceremony the model did
 not need.
 
@@ -38,7 +39,7 @@ Concretely:
 - do not re-describe generic git, GitHub, or code-review competence
 - do not add approval gates that duplicate harness permission modes
 - deterministic, non-reasoning steps belong in POSIX `sh`, not in prose
-- no harness-specific tool names in a skill: the kit must work in any harness
+- no harness-specific tool names in a skill: Établi must work in any harness
   that reads Agent Skills. What one harness needs lives in
   `etabli-orchestrator/scripts/harness.sh`, nowhere else
 
@@ -52,13 +53,13 @@ Concretely:
   individually evaluable and relocatable
 - The placeholder convention this implies (`<skill-root>` vs. naming a sibling
   skill) is defined once, in the shipped
-  [delivery conventions](.agents/skills/etabli-orchestrator/references/conventions.md#placeholders),
-  since this file does not install with the kit. Point new skill content at
+  [Établi conventions](.agents/skills/etabli-orchestrator/references/conventions.md#placeholders),
+  since this file does not install with Établi. Point new skill content at
   that definition rather than restating it here or anywhere else
 - Every skill is mirrored as a relative symlink under `.claude/skills/`. Adding a
   skill means adding its symlink, or Claude Code cannot invoke it by slash
   command. This matches the layout `npx skills add` produces in a consuming
-  repository, so the kit's own checkout and an installed copy behave the same
+  repository, so Établi's own checkout and an installed copy behave the same
 - Frontmatter requires `name`, `author`, `description`, `license`, `repository`,
   `product-version`, `version`, `keywords`, `spec-version`, `metadata.category`,
   and `metadata.owner`
@@ -71,15 +72,20 @@ Concretely:
   with `# Given`, `# When` and `# Then` comments, each followed by a short
   phrase saying what that step sets up, does or checks; `# Given` is left out
   when there is nothing to set up
-- The kit's helpers are POSIX `sh` and POSIX `awk`, held to it by ShellCheck's
+- Établi's helpers are POSIX `sh` and POSIX `awk`, held to it by ShellCheck's
   shebang dialect: no arrays, `[[ ]]`, `local` or `pipefail`. See
   [ADR-007](docs/decisions/ADR-007-posix-sh-helpers.md) for what replaces them.
   They are covered behaviourally, so no coverage gate is applied. Add one if
   Python source ever lands here.
+- `mise run docs:build` builds the documentation site and fails on any
+  warning, such as a link to a page that does not exist. A change to how the
+  Établi is installed or run updates the page that describes it under `docs/`
 - Re-run the checks in `docs/harness-validation.md` after any harness upgrade,
   and delete any rule that no longer earns its tokens
 
 CI runs `mise run lint` and `mise run test` on every push and pull request.
+The `docs` workflow builds the site on every pull request and publishes it to
+GitHub Pages from `develop`.
 The **pre-push hook** installed by `mise run dev` runs the same tasks locally,
 so a failure shows up before anything is shared. Do not bypass it with
 `--no-verify`. Reference every action by its full commit SHA, with the version
