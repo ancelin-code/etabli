@@ -1,10 +1,28 @@
 # Changelog
 
-All notable changes to Établi are recorded here. The kit is installed whole,
+All notable changes to Établi are recorded here. Établi is installed whole,
 so one version covers every skill. Set the date on a release's heading when
 tagging it.
 
 ## [Unreleased]
+
+### Breaking: Établi's own vocabulary
+
+The names now follow the workbench: a **bench** is where a worker does one
+task, and `specs/` holds the specifications of the project.
+
+| Before | Now |
+| --- | --- |
+| `delivery/` (in a project) | `specs/` |
+| `DELIVERY_*` variables | `ETABLI_*` (`DELIVERY_LANE_CMD` is `ETABLI_BENCH_CMD`) |
+| lane | bench (`launch-benches.sh`, `publish-bench.sh`, `release-bench.sh`, `--max-benches`, `.bench-report.md`, `../benches/<repository>/`) |
+| route | workflow |
+| the kit | Établi |
+
+To migrate a project, run `git mv delivery specs`, rename any `DELIVERY_*`
+variable you export, and delete the old `.lanes/` directory and lane
+worktrees. Task branches (`task/<id>`) and claims are unchanged, so work in
+flight keeps its claims.
 
 - A documentation site, <https://ancelin-code.github.io/etabli/>, built with
   Zensical and published from `develop`. The guides move there from the
@@ -13,13 +31,13 @@ tagging it.
   ([ADR-012](https://github.com/ancelin-code/etabli/blob/main/docs/decisions/ADR-012-github-only.md)):
   the status, snapshot and publishing helpers ask `gh` which pull requests exist.
   A forge-agnostic version is planned.
-- Lane session logs are written to `.logs/` in the worktree root, beside the
-  lane worktrees (`../lanes/<repository>/.logs/` by default), instead of
+- Bench session logs are written to `.logs/` in the worktree root, beside the
+  bench worktrees (`../benches/<repository>/.logs/` by default), instead of
   `.lanes/logs/` in the checkout. They live outside every repository, so
   nothing needs ignoring and a log survives the removal of its worktree.
   `--log-dir` still overrides it. A project that ran lanes before can delete its
   `.lanes/` directory.
-- Milestones are the default of a full route: `etabli-decompose` plans them
+- Milestones are the default of a full workflow: `etabli-decompose` plans them
   before the epics and cuts only the first. Only the user can decide against
   them, recorded as a `**Milestones:** none` line in the summary. The
   validator warns, without failing, when the summary has neither.

@@ -21,9 +21,9 @@ HUMAN = 4
 def repo_with(tmp_path: Path, tasks: dict[str, str]) -> Path:
     """A repository root holding task files; values are conflicts_with lists."""
     repo = tmp_path / "repo"
-    (repo / "delivery" / "tasks").mkdir(parents=True)
+    (repo / "specs" / "tasks").mkdir(parents=True)
     for task_id, conflicts in tasks.items():
-        (repo / "delivery" / "tasks" / f"{task_id}.md").write_text(
+        (repo / "specs" / "tasks" / f"{task_id}.md").write_text(
             f"---\nid: {task_id}\nconflicts_with: [{conflicts}]\n---\n", encoding="utf-8"
         )
     return repo
@@ -48,13 +48,13 @@ def scripted_status(tmp_path: Path, polls: list[dict[str, str]], milestones: str
 
 
 def recording_launcher(tmp_path: Path) -> Path:
-    """A launch-lanes.sh that records its arguments and ids, and launches them all."""
+    """A launch-benches.sh that records its arguments and ids, and launches them all."""
     script = tmp_path / "launch.sh"
     record = tmp_path / "launches.log"
     script.write_text(
         f'printf "ARGS %s\\n" "$*" >> "{record}"\n'
         f'while read -r id; do printf "IDS %s\\n" "$id" >> "{record}"; '
-        f'printf "LAUNCHED\\t%s\\tclaude\\tdefault\\t../lanes/%s\\n" "$id" "$id"; done\n',
+        f'printf "LAUNCHED\\t%s\\tclaude\\tdefault\\t../benches/%s\\n" "$id" "$id"; done\n',
         encoding="utf-8",
     )
     return script
@@ -158,10 +158,10 @@ class TestAdvancing:
         # When the loop follows with a launcher option after --
         follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1", "--", "--no-web")
 
-        # Then the launcher receives it, with the lane limit
+        # Then the launcher receives it, with the bench limit
         args = (tmp_path / "launches.log").read_text()
         assert "--no-web" in args
-        assert "--max-lanes 3" in args
+        assert "--max-benches 3" in args
 
 
 class TestMilestoneBoundary:
@@ -226,40 +226,40 @@ class TestLimits:
         assert launched(tmp_path) == ["a-003"]
         assert ["SKIP", "a-002", "conflicts with a-001, in flight"] in events(result.stdout)
 
-    def test_lanes_running_here_use_up_slots(self, tmp_path: Path) -> None:
-        # Given one lane already running from this checkout
+    def test_benches_running_here_use_up_slots(self, tmp_path: Path) -> None:
+        # Given one bench already running from this checkout
         repo = repo_with(tmp_path, {"a-001": "", "a-002": ""})
-        logs = repo.parent / "lanes" / repo.name / ".logs"
+        logs = repo.parent / "benches" / repo.name / ".logs"
         logs.mkdir(parents=True)
         (logs / "a-001.log").write_text("working\n", encoding="utf-8")
         status = scripted_status(tmp_path, [{"a-001": "in-progress", "a-002": "ready"}])
 
         # When the loop polls once with two slots
-        follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1", "--max-lanes", "2")
+        follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1", "--max-benches", "2")
 
         # Then the launcher is offered the one slot left
-        assert "--max-lanes 1" in (tmp_path / "launches.log").read_text()
+        assert "--max-benches 1" in (tmp_path / "launches.log").read_text()
 
     def test_no_launch_when_every_slot_is_taken(self, tmp_path: Path) -> None:
-        # Given one lane already running from this checkout
+        # Given one bench already running from this checkout
         repo = repo_with(tmp_path, {"a-001": "", "a-002": ""})
-        logs = repo.parent / "lanes" / repo.name / ".logs"
+        logs = repo.parent / "benches" / repo.name / ".logs"
         logs.mkdir(parents=True)
         (logs / "a-001.log").write_text("working\n", encoding="utf-8")
         status = scripted_status(tmp_path, [{"a-001": "in-progress", "a-002": "ready"}])
 
         # When the loop polls once with one slot
-        follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1", "--max-lanes", "1")
+        follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1", "--max-benches", "1")
 
         # Then nothing is launched
         assert launched(tmp_path) == []
 
 
-class TestLaneOutcomes:
-    def test_a_published_lane_is_announced_once(self, tmp_path: Path) -> None:
-        # Given a lane log that records a published pull request
+class TestBenchOutcomes:
+    def test_a_published_bench_is_announced_once(self, tmp_path: Path) -> None:
+        # Given a bench log that records a published pull request
         repo = repo_with(tmp_path, {"a-001": ""})
-        logs = repo.parent / "lanes" / repo.name / ".logs"
+        logs = repo.parent / "benches" / repo.name / ".logs"
         logs.mkdir(parents=True)
         (logs / "a-001.log").write_text("done\nPUBLISHED\ta-001\thttps://example.test/pr/4\n", encoding="utf-8")
         status = scripted_status(tmp_path, [{"a-001": "in-progress"}])
@@ -270,10 +270,10 @@ class TestLaneOutcomes:
         # Then the pull request is announced once
         assert events(result.stdout).count(["PUBLISHED", "a-001", "https://example.test/pr/4"]) == 1
 
-    def test_a_lane_that_ended_without_a_pull_request_is_reported(self, tmp_path: Path) -> None:
-        # Given a lane log that ended with the lane kept
+    def test_a_bench_that_ended_without_a_pull_request_is_reported(self, tmp_path: Path) -> None:
+        # Given a bench log that ended with the bench kept
         repo = repo_with(tmp_path, {"a-001": ""})
-        logs = repo.parent / "lanes" / repo.name / ".logs"
+        logs = repo.parent / "benches" / repo.name / ".logs"
         logs.mkdir(parents=True)
         (logs / "a-001.log").write_text("KEPT\ta-001\tthe worktree has changes\n", encoding="utf-8")
         status = scripted_status(tmp_path, [{"a-001": "in-progress"}])
@@ -281,8 +281,8 @@ class TestLaneOutcomes:
         # When the loop polls once
         result = follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1")
 
-        # Then the lane is reported as failed
-        assert events(result.stdout)[0][:2] == ["LANE-FAILED", "a-001"]
+        # Then the bench is reported as failed
+        assert events(result.stdout)[0][:2] == ["BENCH-FAILED", "a-001"]
 
     def test_unreadable_state_is_retried_then_given_up(self, tmp_path: Path) -> None:
         # Given a status script that always fails
@@ -301,10 +301,10 @@ class TestLaneOutcomes:
 class TestExitOnHuman:
     """With --exit-on-human the end of the command is the notification."""
 
-    def test_a_published_lane_ends_the_command(self, tmp_path: Path) -> None:
-        # Given a lane that published its pull request, and a ready task
+    def test_a_published_bench_ends_the_command(self, tmp_path: Path) -> None:
+        # Given a bench that published its pull request, and a ready task
         repo = repo_with(tmp_path, {"a-001": "", "a-002": ""})
-        logs = repo.parent / "lanes" / repo.name / ".logs"
+        logs = repo.parent / "benches" / repo.name / ".logs"
         logs.mkdir(parents=True)
         (logs / "a-001.log").write_text("PUBLISHED\ta-001\thttps://example.test/pr/4\n", encoding="utf-8")
         status = scripted_status(tmp_path, [{"a-001": "in-progress", "a-002": "ready"}])
@@ -317,10 +317,10 @@ class TestExitOnHuman:
         assert ["PUBLISHED", "a-001", "https://example.test/pr/4"] in events(result.stdout)
         assert launched(tmp_path) == ["a-002"]
 
-    def test_a_failed_lane_ends_the_command(self, tmp_path: Path) -> None:
-        # Given a lane that ended without a pull request
+    def test_a_failed_bench_ends_the_command(self, tmp_path: Path) -> None:
+        # Given a bench that ended without a pull request
         repo = repo_with(tmp_path, {"a-001": ""})
-        logs = repo.parent / "lanes" / repo.name / ".logs"
+        logs = repo.parent / "benches" / repo.name / ".logs"
         logs.mkdir(parents=True)
         (logs / "a-001.log").write_text("KEPT\ta-001\tthe worktree has changes\n", encoding="utf-8")
         status = scripted_status(tmp_path, [{"a-001": "in-progress"}])
@@ -330,12 +330,12 @@ class TestExitOnHuman:
 
         # Then it exits distinctly
         assert result.returncode == HUMAN
-        assert events(result.stdout)[0][:2] == ["LANE-FAILED", "a-001"]
+        assert events(result.stdout)[0][:2] == ["BENCH-FAILED", "a-001"]
 
     def test_a_restart_does_not_stop_on_what_was_announced(self, tmp_path: Path) -> None:
-        # Given a published lane whose pull request is still a draft
+        # Given a published bench whose pull request is still a draft
         repo = repo_with(tmp_path, {"a-001": ""})
-        logs = repo.parent / "lanes" / repo.name / ".logs"
+        logs = repo.parent / "benches" / repo.name / ".logs"
         logs.mkdir(parents=True)
         (logs / "a-001.log").write_text("PUBLISHED\ta-001\thttps://example.test/pr/4\n", encoding="utf-8")
         status = scripted_status(tmp_path, [{"a-001": "in-progress"}])
@@ -348,10 +348,10 @@ class TestExitOnHuman:
         assert first.returncode == HUMAN
         assert second.returncode == COMPLETE
 
-    def test_without_the_option_a_published_lane_does_not_stop_the_loop(self, tmp_path: Path) -> None:
-        # Given a published lane
+    def test_without_the_option_a_published_bench_does_not_stop_the_loop(self, tmp_path: Path) -> None:
+        # Given a published bench
         repo = repo_with(tmp_path, {"a-001": ""})
-        logs = repo.parent / "lanes" / repo.name / ".logs"
+        logs = repo.parent / "benches" / repo.name / ".logs"
         logs.mkdir(parents=True)
         (logs / "a-001.log").write_text("PUBLISHED\ta-001\thttps://example.test/pr/4\n", encoding="utf-8")
         status = scripted_status(tmp_path, [{"a-001": "in-progress"}])

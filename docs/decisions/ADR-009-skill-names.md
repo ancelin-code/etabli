@@ -6,7 +6,7 @@
 ## Context
 
 In a harness a skill name is not branding. It is a line in the slash menu and a
-phrase in a lane's prompt, read by someone who has not opened the README. A name
+phrase in a bench's prompt, read by someone who has not opened the README. A name
 has to say what the skill does, and must not collide with a harness built-in or
 a developer's own skill.
 
@@ -16,7 +16,7 @@ Skills are named by their role, under the prefix `delivery`:
 
 | Skill | Role |
 |---|---|
-| `etabli-orchestrator` | Where the project stands, the route, the gates, the lane policy. The entry point |
+| `etabli-orchestrator` | Where the project stands, the workflow, the gates, the bench policy. The entry point |
 | `etabli-spec` | Requirements, then decisions and contracts |
 | `etabli-decompose` | Approved work into validated task files |
 | `etabli-implement` | One task into one validated change |

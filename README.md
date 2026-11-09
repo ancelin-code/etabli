@@ -5,22 +5,22 @@
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 Agent Skills for AI-native delivery: requirements and design spine,
-decomposition, parallel implementation lanes, review. Git is the only state:
+decomposition, parallel implementation benches, review. Git is the only state:
 no server, no database, no status file. *Établi* is French for *workbench*.
 
 The documentation is at <https://ancelin-code.github.io/etabli/>.
 
-> **Status: early.** The kit is used on real projects, and `v0.1.0` is its first
+> **Status: early.** Établi is used on real projects, and `v0.1.0` is its first
 > release. Conventions may still change between versions. Install a release
 > tag, read [CHANGELOG.md](CHANGELOG.md) before updating, and expect breaking
 > changes to be called out there rather than migrated.
 
-**This repository is the kit.** The six Établi skills are one workflow,
+**This repository is Établi.** The six Établi skills are one workflow,
 not a catalogue you pick from. Each phase consumes the file the previous phase
 wrote, so a single skill installed alone is a phase with no input and no
 consumer. Install them together.
 
-The skills hold no harness-specific tool names. The lane launcher has adapters
+The skills hold no harness-specific tool names. The bench launcher has adapters
 for Claude Code, GitHub Copilot CLI, Codex CLI, OpenCode and Pi, and a custom
 command for any other, so no single vendor's license is required.
 
@@ -41,9 +41,9 @@ Commit what that produced, then tell the orchestrator what you want built:
 ```
 
 It writes the requirements, then the tasks, and stops at each for your
-approval; then lanes build the tasks and open draft pull requests. The
+approval; then benches build the tasks and open draft pull requests. The
 [documentation](https://ancelin-code.github.io/etabli/) covers the install, the
-route, lanes, tiers, harnesses, several repositories, reviews and connectors.
+workflow, benches, tiers, harnesses, several repositories, reviews and connectors.
 
 ## Develop
 
@@ -58,7 +58,7 @@ mise run docs:serve  # the documentation site, rebuilt on each change
 
 Issues and pull requests are welcome. Read [AGENTS.md](AGENTS.md) first: it
 holds the rules every change is checked against, above all that a rule stays in
-the kit only if removing it measurably degrades results.
+Établi only if removing it measurably degrades results.
 
 - Branch from `develop` and open the pull request against it. Pull requests are
   squash-merged, so the title is a Conventional Commits line.
@@ -75,7 +75,7 @@ the kit only if removing it measurably degrades results.
 
 ## Maintenance
 
-Every rule in this kit that works around harness behaviour was earned by a test,
+Every rule in Établi that works around harness behaviour was earned by a test,
 and harness behaviour changes. The tests, and the CLI versions they were run
 against, are recorded in [docs/harness-validation.md](docs/harness-validation.md).
 
@@ -90,16 +90,16 @@ loudly:
 - the `.claude/skills/` symlinks, which exist only because Claude Code did not
   register `.agents/skills/`. Harmless if that changes, but dead weight.
 - slash-command invocation of a skill. If a harness stops resolving
-  `/etabli-implement <task-file>` as an invocation, every lane reverts to
+  `/etabli-implement <task-file>` as an invocation, every bench reverts to
   reading the skill as prose, which makes its boundaries advisory and leaves no
-  trace in the lane log.
+  trace in the bench log.
 
 This is a maintainer's task, not part of a run. It is deliberately not in any
 `SKILL.md`, so no agent pays tokens for it on every invocation.
 
 ## Design
 
-The route, the gates and the lane policy live in the `etabli-orchestrator`
+The workflow, the gates and the bench policy live in the `etabli-orchestrator`
 skill. Shared conventions - the project, epic and task units, placeholders,
 task schema, branch names, the claim protocol, tiers, pull request rules -
 are in its `references/`, loaded on demand during a run.

@@ -33,26 +33,26 @@ To say what a tier means for you, write a `tiers.conf` at
 The file uses git's own config format, so comments and quoting work as they do
 in `.gitconfig`. Harness and model are both optional. A mapping applies only to
 the harness it names, so a model id never reaches a harness that would refuse
-it. `advisor` names a stronger model a Claude Code lane may consult; no other
-harness has one. `$XDG_CONFIG_HOME` moves the file, and `$DELIVERY_TIERS`
+it. `advisor` names a stronger model a Claude Code bench may consult; no other
+harness has one. `$XDG_CONFIG_HOME` moves the file, and `$ETABLI_TIERS`
 names another file to read instead of it.
 
-A team that agrees on a mapping can commit it as `delivery/tiers.conf`; the
+A team that agrees on a mapping can commit it as `specs/tiers.conf`; the
 developer's own file wins, tier by tier. The full rules are in the
 [conventions](https://github.com/ancelin-code/etabli/blob/main/.agents/skills/etabli-orchestrator/references/conventions.md#mapping-a-tier-to-a-model).
 
-## Which harness a lane runs on
+## Which harness a bench runs on
 
-A lane runs on the first of: `--harness`, the harness its tier maps to,
-`$DELIVERY_HARNESS`, then the first harness found installed. `--harness` moves
+A bench runs on the first of: `--harness`, the harness its tier maps to,
+`$ETABLI_HARNESS`, then the first harness found installed. `--harness` moves
 a whole launch on purpose, for example to the one whose allowance still has
 room.
 
 ## The reviewer runs one tier up
 
-A lane's refinement session runs one tier up: a `chore` task is reviewed as a
+A bench's refinement session runs one tier up: a `chore` task is reviewed as a
 `build` one, a `build` task as a `plan` one, and a `plan` task by `plan`. With
-the mapping above, a `build` lane is written by `sonnet` and reviewed by
+the mapping above, a `build` bench is written by `sonnet` and reviewed by
 `opus`, because a reviewer no stronger than the author finds little the author
 would not. When the tier above maps to another harness, the review runs there,
 which also gives the change a second model's view.

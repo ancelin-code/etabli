@@ -1,14 +1,14 @@
 # Review the Pull Requests
 
-A lane's change is reviewed twice. Only the second review is yours to set up,
+A bench's change is reviewed twice. Only the second review is yours to set up,
 and setting it up is optional.
 
 ## The first review is automatic
 
-Every lane ends with `etabli-refine`, a second session that did not write the
+Every bench ends with `etabli-refine`, a second session that did not write the
 change. It reviews the change against the task's acceptance criteria on a
 stronger model, fixes what it finds, simplifies it, and re-runs validation.
-There is nothing to configure: it runs in every lane, and the Refinement
+There is nothing to configure: it runs in every bench, and the Refinement
 section of the pull request body says what it fixed, deferred and simplified.
 See [The Six Skills](../concepts/skills.md#refinement-the-second-session).
 
@@ -16,19 +16,19 @@ See [The Six Skills](../concepts/skills.md#refinement-the-second-session).
 
 Review is the final gate. Everything before it ran unattended, so this is where
 a person decides whether the work lands, and a refined change is not a reviewed
-one. The kit ships no reviewer for this gate: use the harness's own review
-capability, or install a review skill alongside the kit and compare it with the
+one. Établi ships no reviewer for this gate: use the harness's own review
+capability, or install a review skill alongside Établi and compare it with the
 unassisted harness before adopting it.
 
 When you ask the orchestrator what is next, `where.sh` names, for each pull
 request in review, the review skills worth running on it. Those names come from
-`delivery/review-lenses.conf`, which is a suggestion for you, not something that
+`specs/review-lenses.conf`, which is a suggestion for you, not something that
 runs by itself.
 
 ## Lenses
 
 A **lens** is a concern that deserves its own review pass, such as security or
-data. The project names its lenses in `delivery/review-lenses.conf`, one per
+data. The project names its lenses in `specs/review-lenses.conf`, one per
 line: the lens, the review skill that covers it (`-` for the harness's own review), and optionally
 the path patterns that bring it in.
 
@@ -67,9 +67,9 @@ on the pull request and fixed, not re-reviewed.
 A finding names a concrete failure: the input or state that triggers it, and
 what goes wrong. "This could be clearer" is a comment, not a finding.
 
-## Reviewing an unattended lane
+## Reviewing an unattended bench
 
-A lane ran without a human watching, so check the things a watching human would
+A bench ran without a human watching, so check the things a watching human would
 have caught:
 
 - does the diff stay inside the task's frozen scope, or did it grow

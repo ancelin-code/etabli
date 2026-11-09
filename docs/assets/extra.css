@@ -72,9 +72,9 @@
   letter-spacing: 0.02em;
 }
 
-/* The route and the way work is cut, drawn in HTML so they follow the theme and
+/* The workflow and the way work is cut, drawn in HTML so they follow the theme and
    fit the page without scrolling. */
-.route-fig {
+.workflow-fig {
   --fig-line: var(--md-default-fg-color--lightest);
   --fig-card: var(--md-code-bg-color);
   --fig-gate: #c8601f;
@@ -83,13 +83,13 @@
   --fig-auto-bg: rgb(35 73 138 / 10%);
   margin: 1.2rem 0 1.6rem;
 }
-[data-md-color-scheme="slate"] .route-fig {
+[data-md-color-scheme="slate"] .workflow-fig {
   --fig-gate: #f2924f;
   --fig-gate-bg: rgb(242 146 79 / 14%);
   --fig-auto: #8db4f2;
   --fig-auto-bg: rgb(141 180 242 / 12%);
 }
-.route-fig__label {
+.workflow-fig__label {
   margin: 1rem 0 0.4rem;
   font-size: 0.75rem;
   font-weight: 700;
@@ -97,8 +97,8 @@
   text-transform: uppercase;
   color: var(--md-default-fg-color--light);
 }
-.route-fig__label:first-child { margin-top: 0; }
-.route-fig__label::before {
+.workflow-fig__label:first-child { margin-top: 0; }
+.workflow-fig__label::before {
   content: "";
   display: inline-block;
   width: 2.1rem;
@@ -108,31 +108,31 @@
   background: center / contain no-repeat;
   image-rendering: pixelated;
 }
-.route-fig__label--once::before { background-image: url("icons/blueprint.svg"); }
-.route-fig__label--loop::before { background-image: url("icons/saw.svg"); }
+.workflow-fig__label--once::before { background-image: url("icons/blueprint.svg"); }
+.workflow-fig__label--loop::before { background-image: url("icons/saw.svg"); }
 
-[dir] .md-typeset ol.route {
+[dir] .md-typeset ol.workflow {
   display: grid;
   gap: 1rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.md-typeset ol.route--once { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.md-typeset ol.route--loop {
+.md-typeset ol.workflow--once { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.md-typeset ol.workflow--loop {
   grid-template-columns: minmax(0, 1fr) minmax(0, 2.6fr);
   grid-template-areas: "cut group" "review group" "next next";
   align-items: stretch;
 }
-[dir] .md-typeset .route__group, [dir] .md-typeset .route__next { margin: 0; }
+[dir] .md-typeset .workflow__group, [dir] .md-typeset .workflow__next { margin: 0; }
 /* The cards grow to fill the frame, below a fixed space under the note. */
-[dir] .md-typeset ol.route__inner { flex: 1; margin-top: 0.5rem; }
-.md-typeset ol.route--loop > .route__cut { grid-area: cut; }
-.md-typeset ol.route--loop > .route__group { grid-area: group; }
-.md-typeset ol.route--loop > .route__review { grid-area: review; }
-.md-typeset ol.route--loop > .route__next { grid-area: next; }
+[dir] .md-typeset ol.workflow__inner { flex: 1; margin-top: 0.5rem; }
+.md-typeset ol.workflow--loop > .workflow__cut { grid-area: cut; }
+.md-typeset ol.workflow--loop > .workflow__group { grid-area: group; }
+.md-typeset ol.workflow--loop > .workflow__review { grid-area: review; }
+.md-typeset ol.workflow--loop > .workflow__next { grid-area: next; }
 /* The inner loop: tasks are built and merged in waves, not all at once. */
-.md-typeset .route__group {
+.md-typeset .workflow__group {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -141,7 +141,7 @@
   border-radius: 0.6rem;
   font-size: 0.78rem;
 }
-.route__group::before {
+.workflow__group::before {
   content: "\203A";
   position: absolute;
   top: 25%;
@@ -152,7 +152,7 @@
   font-size: 1.3rem;
   color: var(--md-default-fg-color--light);
 }
-.route__group::after {
+.workflow__group::after {
   content: "\203A";
   position: absolute;
   top: 75%;
@@ -163,11 +163,11 @@
   font-size: 1.3rem;
   color: var(--md-default-fg-color--light);
 }
-.md-typeset .route__group-title { margin: 0; font-weight: 700; font-size: 0.8rem; color: var(--fig-auto); }
-.route__group-title::before { content: "\21BB\00a0"; }
-.md-typeset .route__group-note { margin: 0.15rem 0 0.2rem; font-size: 0.72rem; line-height: 1.35; color: var(--md-default-fg-color--light); }
-.md-typeset ol.route__inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.1rem; margin: 0; padding: 0; list-style: none; }
-.md-typeset .route__next {
+.md-typeset .workflow__group-title { margin: 0; font-weight: 700; font-size: 0.8rem; color: var(--fig-auto); }
+.workflow__group-title::before { content: "\21BB\00a0"; }
+.md-typeset .workflow__group-note { margin: 0.15rem 0 0.2rem; font-size: 0.72rem; line-height: 1.35; color: var(--md-default-fg-color--light); }
+.md-typeset ol.workflow__inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.1rem; margin: 0; padding: 0; list-style: none; }
+.md-typeset .workflow__next {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -178,7 +178,7 @@
   color: var(--fig-gate);
   text-align: center;
 }
-.md-typeset ol.route > .route__step {
+.md-typeset ol.workflow > .workflow__step {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -191,7 +191,7 @@
   font-size: 0.78rem;
   line-height: 1.35;
 }
-.route__step + .route__step::before {
+.workflow__step + .workflow__step::before {
   content: "\203A";
   position: absolute;
   top: 50%;
@@ -202,7 +202,7 @@
   font-size: 1.3rem;
   color: var(--md-default-fg-color--light);
 }
-.route__n {
+.workflow__n {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -214,7 +214,7 @@
   font-size: 0.75rem;
   font-weight: 700;
 }
-.md-typeset .route__name {
+.md-typeset .workflow__name {
   font-family: Daubenton, Georgia, serif;
   font-weight: 400;
   font-size: 1.1rem;
@@ -223,23 +223,23 @@
   text-decoration: none;
 }
 /* The whole card is the link target. */
-.md-typeset .route__name::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
-.md-typeset ol.route > .route__step { transition: border-color 0.15s, box-shadow 0.15s; }
-.md-typeset ol.route > .route__step:hover,
-.md-typeset ol.route > .route__step:focus-within {
+.md-typeset .workflow__name::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.md-typeset ol.workflow > .workflow__step { transition: border-color 0.15s, box-shadow 0.15s; }
+.md-typeset ol.workflow > .workflow__step:hover,
+.md-typeset ol.workflow > .workflow__step:focus-within {
   border-color: var(--md-accent-fg-color);
   box-shadow: 0 0 0 1px var(--md-accent-fg-color);
 }
-.md-typeset .route__name:hover { color: var(--md-accent-fg-color); }
-.route__skill code { display: block; width: fit-content; margin: 0 0 0.15rem; padding: 0 0.3em; font-size: 0.64rem; white-space: nowrap; }
-.route__skill, .route__file {
+.md-typeset .workflow__name:hover { color: var(--md-accent-fg-color); }
+.workflow__skill code { display: block; width: fit-content; margin: 0 0 0.15rem; padding: 0 0.3em; font-size: 0.64rem; white-space: nowrap; }
+.workflow__skill, .workflow__file {
   font-size: 0.72rem;
   line-height: 1.3;
   color: var(--md-default-fg-color--light);
 }
-.route__skill { font-weight: 600; }
-.md-typeset .route__file { margin-bottom: 0.7rem; }
-.route__badge {
+.workflow__skill { font-weight: 600; }
+.md-typeset .workflow__file { margin-bottom: 0.7rem; }
+.workflow__badge {
   align-self: flex-start;
   margin-top: auto;
   padding: 0.18em 0.85em;
@@ -250,7 +250,7 @@
   color: var(--fig-gate);
   background: var(--fig-gate-bg);
 }
-.route__badge--auto { color: var(--fig-auto); background: var(--fig-auto-bg); }
+.workflow__badge--auto { color: var(--fig-auto); background: var(--fig-auto-bg); }
 /* How the work is cut: a project holds milestones, a milestone epics, an epic
    tasks. Only the current milestone has tasks. */
 .nest { display: grid; gap: 0.6rem; padding: 0.8rem; border: 1px solid var(--fig-line);
@@ -296,13 +296,13 @@
 .nest__note { margin: 0; font-size: 0.74rem; color: var(--md-default-fg-color--light); }
 
 @media (max-width: 44.9375em) {
-  .md-typeset ol.route--once, .md-typeset ol.route--loop, .md-typeset ol.route__inner { grid-template-columns: 1fr; }
-  .md-typeset ol.route--loop { grid-template-areas: "cut" "group" "review" "next"; }
-  .route__group::before, .route__step + .route__step::before {
+  .md-typeset ol.workflow--once, .md-typeset ol.workflow--loop, .md-typeset ol.workflow__inner { grid-template-columns: 1fr; }
+  .md-typeset ol.workflow--loop { grid-template-areas: "cut" "group" "review" "next"; }
+  .workflow__group::before, .workflow__step + .workflow__step::before {
     top: -0.55rem;
     left: 50%;
     transform: translate(-50%, -50%) rotate(90deg);
   }
-  .route__group::after { display: none; }
+  .workflow__group::after { display: none; }
   .nest__milestones { grid-template-columns: 1fr; }
 }

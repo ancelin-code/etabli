@@ -5,7 +5,7 @@
 
 ## Context
 
-Review is the final gate, and the kit deliberately ships no reviewer. But in
+Review is the final gate, and Établi deliberately ships no reviewer. But in
 practice that left the user with no guidance at review time. `where.sh`
 reported a task as in review, and nothing said which review to run on it, even
 when the project had installed specialised review skills for security or data
@@ -13,14 +13,14 @@ work.
 
 Pull request labels were considered as the selection signal and rejected as
 the primary one. By the time a label exists, the only party that could have set
-it unprompted is the lane that wrote the change, which would be grading its own
+it unprompted is the bench that wrote the change, which would be grading its own
 work, or a person doing it by hand on every pull request.
 
 ## Decision
 
 A lens is a concern worth its own review pass. The consuming project maps each
 lens to a review skill, and optionally to path patterns, in
-`delivery/review-lenses.conf`. A pull request needs a lens when:
+`specs/review-lenses.conf`. A pull request needs a lens when:
 
 - its task file lists it in the optional `review` field, set at decomposition,
   when the task's files and contracts are known and a human approves the cut
@@ -33,12 +33,12 @@ lens to a review skill, and optionally to path patterns, in
 to run. `general` applies to every pull request.
 
 The review still runs where it did before: in a fresh session a human starts,
-not inside `etabli-implement`. The lane does not add labels itself, because
+not inside `etabli-implement`. The bench does not add labels itself, because
 `gh pr create --label` fails when the label does not exist in the repository.
 
 ## Consequences
 
-- The kit still ships no reviewer and names no harness tool: skill names live
+- Établi still ships no reviewer and names no harness tool: skill names live
   in the consuming repository's file.
 - Each pull request in review costs one extra `gh pr view` call in `where.sh`.
 - Whether a lens beats the general review it sits beside is not established by

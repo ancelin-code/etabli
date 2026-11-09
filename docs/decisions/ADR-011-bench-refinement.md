@@ -1,17 +1,17 @@
-# ADR-011: A lane refines its change in a second session, one tier up
+# ADR-011: A bench refines its change in a second session, one tier up
 
 **Status:** accepted
 **Date:** 2026-10-22
 
 ## Context
 
-A lane went straight from `etabli-implement` to a draft pull request. The
-only quality pass was the human review at the merge gate, which the kit itself
-names as its bottleneck: three lanes at most, because one person has to review
+A bench went straight from `etabli-implement` to a draft pull request. The
+only quality pass was the human review at the merge gate, which Établi itself
+names as its bottleneck: three benches at most, because one person has to review
 what they produce. Nothing reviewed a change before that person did, and
 nothing simplified it.
 
-The maintainer's own practice, outside the kit, is: implement in one agent
+The maintainer's own practice, outside Établi, is: implement in one agent
 session; then review, fix the findings and simplify in another session, on a
 stronger model (Haiku reviewed by Sonnet, Sonnet by Opus); then commit and push
 a draft.
@@ -33,9 +33,9 @@ Two findings from published work shaped the design:
 
 ## Decision
 
-A sixth skill, `etabli-refine`, is the second session of every lane. The
-launcher starts it in the lane's worktree after `etabli-implement` exits
-cleanly and left a change, and before `publish-lane.sh` commits and pushes.
+A sixth skill, `etabli-refine`, is the second session of every bench. The
+launcher starts it in the bench's worktree after `etabli-implement` exits
+cleanly and left a change, and before `publish-bench.sh` commits and pushes.
 
 - **One pass, in order:** review the change against the task's acceptance
   criteria, fix the findings that name a concrete failure, simplify only the
@@ -51,7 +51,7 @@ cleanly and left a change, and before `publish-lane.sh` commits and pushes.
   `REFINE-FAILED`, noted in the report, and the change is published as
   `etabli-implement` left it. A refinement that finds the task wrong reports
   it as open on the draft pull request; it does not revert.
-- **On by default,** `--no-refine` to skip. The cost is a session per lane, in
+- **On by default,** `--no-refine` to skip. The cost is a session per bench, in
   tokens, not in a person's time.
 
 The session is started by the launcher, not by a harness's own subagent
@@ -71,20 +71,20 @@ mechanism. Subagents differ between harnesses; a second session through
 - **Review on the same model.** The study above found no reliable gain from
   same-model fresh-context review over self-review, so a second session on the
   same model would cost a session for little.
-- **Loop until the review is clean.** The kit's review budget is one pass for a
+- **Loop until the review is clean.** Établi's review budget is one pass for a
   reason: later passes find less than they cost.
 - **Leave it to the merge gate.** That gate stays, unchanged. Refinement takes
   work off it; it does not replace it.
 
 ## Consequences
 
-Every lane costs a second session, on a more expensive model. Whether it pays
-is the kit's own rule to prove: the phase 6 evaluation compares lanes with and
+Every bench costs a second session, on a more expensive model. Whether it pays
+is Établi's own rule to prove: the phase 6 evaluation compares benches with and
 without refinement, on human review findings per pull request, diff size,
 validation and cost. Until then, `--no-refine` is one flag away.
 
 The launcher's `LAUNCHED` and `WOULD-LAUNCH` lines gain two columns, the review
-harness and model, after the lane's model; the worktree and repository stay
+harness and model, after the bench's model; the worktree and repository stay
 last.
 
 The human reviewer reads a Refinement section in each pull request body, which

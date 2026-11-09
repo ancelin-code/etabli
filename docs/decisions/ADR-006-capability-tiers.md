@@ -7,7 +7,7 @@
 
 A task carried a `model` label, one of `opus`, `sonnet`, `terra`, `luna` and
 `haiku`. The label chose the harness and the model, and so which of two
-separate allowances paid for the lane. The launcher held a table from each
+separate allowances paid for the bench. The launcher held a table from each
 label to a model id per harness, and fell back to the other harness when a
 label's default had no binary installed.
 
@@ -16,8 +16,8 @@ Everywhere else it is wrong in three ways:
 
 - it names vendors' products, so a task file is out of date when a model is
   renamed, and unusable for a developer with other models
-- the kit cannot know which ids an account may use. Copilot CLI refused ids the
-  kit had shipped (`harness-validation.md`, test 7), after the claim and the
+- Établi cannot know which ids an account may use. Copilot CLI refused ids the
+  Établi had shipped (`harness-validation.md`, test 7), after the claim and the
   worktree already existed
 - it fixes the harness list at two, with the budget logic woven through the
   launcher
@@ -35,12 +35,12 @@ developer decides what that means.**
 - A `tiers.conf` maps a tier to a harness and a model, either optional. It is a
   git config file, one section per tier, read with `git config --file`. Two
   files are read and the first to name a tier decides all of it: the
-  developer's own, outside every repository, then `delivery/tiers.conf` for a
+  developer's own, outside every repository, then `specs/tiers.conf` for a
   team that agrees on one.
 - A mapping applies only to the harness it names. A model id means nothing to
   another harness, and passing it through would end the session at startup.
-- A lane runs on the first of `--harness`, the harness its tier maps to,
-  `DELIVERY_HARNESS`, then the first harness installed.
+- A bench runs on the first of `--harness`, the harness its tier maps to,
+  `ETABLI_HARNESS`, then the first harness installed.
 - The launcher holds no model ids, and no longer falls back between harnesses
   for a label. A harness somebody chose is never swapped for another.
 - A malformed mapping stops the launch and names its file. git reports syntax
@@ -54,13 +54,13 @@ effort as an axis independent of the tier, and it is, but a level means
 something only for a particular model: the levels one harness accepts another
 refuses, and what `high` costs depends on the model behind it. Établi no longer
 chooses the model, so it cannot choose a level that fits it, and only the
-developer knows which model runs the lane. Effort belongs to the harness's own
+developer knows which model runs the bench. Effort belongs to the harness's own
 settings, where it is set once for the model in use.
 
 ## Alternatives considered
 
 - **Keep the vendor labels and add more** - Rejected. Every new model or harness
-  becomes an edit to the kit, in the validator, the launcher and the conventions
+  becomes an edit to Établi, in the validator, the launcher and the conventions
   table, and a task file would outlive the model it names.
 - **Capability names in the task, model ids in the task file too** - Rejected.
   The ids depend on each developer's licenses, so a committed id fails for
@@ -78,7 +78,7 @@ settings, where it is set once for the model in use.
   comment syntax and is awkward to edit by hand. Git's format has comments,
   quoting and errors, and nothing to install.
 - **An effort column in `tiers.conf`** - Rejected. It would work, since a
-  mapping already names a harness and a model, but it makes the kit own a flag
+  mapping already names a harness and a model, but it makes Établi own a flag
   per harness and keep the accepted levels current as they change. The harness
   already has a setting for it, which is the better home.
 - **No required field, with `build` everywhere** - Rejected. Routing everything
@@ -87,19 +87,19 @@ settings, where it is set once for the model in use.
 
 ## Consequences
 
-- Nothing is lost by default: with no `tiers.conf` a lane runs on the installed
+- Nothing is lost by default: with no `tiers.conf` a bench runs on the installed
   harness's own default model, which is what most developers want.
 - Reproducibility moves to the developer. Two people can run the same task on
-  different models. That was already true of the harness defaults the kit
-  relied on, and a team that wants one answer commits `delivery/tiers.conf`.
+  different models. That was already true of the harness defaults Établi
+  relied on, and a team that wants one answer commits `specs/tiers.conf`.
 - The two-allowance routing is still possible, as a mapping that sends `chore`
   to one harness and `build` to another. It is a use of the mapping, not part of
-  the kit.
+  Établi.
 - Nothing is installed anywhere yet, so there is no migration path and no
   handling of the old fields: a task file still using `model` fails validation
   for lacking a `tier`, and a leftover `effort` is ignored.
-- A lane's reasoning effort is whatever the harness is configured to use. Two
-  lanes on the same tier can think for different lengths of time if their
+- A bench's reasoning effort is whatever the harness is configured to use. Two
+  benches on the same tier can think for different lengths of time if their
   developers configured different defaults. That is the cost of not owning the
   setting, and it follows from not owning the model.
 - The `LAUNCHED` and `WOULD-LAUNCH` rows lose their effort column, so the

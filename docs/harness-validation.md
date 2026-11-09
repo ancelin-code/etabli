@@ -1,13 +1,13 @@
 # Harness validation
 
-Results of the early tests that gate the kit's design. Each test exists to
+Results of the early tests that gate Établi's design. Each test exists to
 invalidate one assumption cheaply, before anything is built on top of it.
 
 This is a record for maintainers, not a document any skill loads at run time.
 Every conclusion that changes behaviour is already encoded where it acts: the
 install steps and the shadowing check in the README, the claim rule in the
 orchestrator's `conventions.md`, the symlink rule in `AGENTS.md`, the slash
-invocation in the lane launcher, and the orchestrator's description, `where.sh`
+invocation in the bench launcher, and the orchestrator's description, `where.sh`
 and routing block. What is kept here is the evidence behind them.
 
 These results are true of the versions below and of nothing else. When to re-run
@@ -40,8 +40,8 @@ run it. Only *Run* cells justify calling a harness validated.
 | Denies `terraform apply` and `destroy` | Run, 2026-09 | Run, 2026-09 | Not denied; the sandbox has no network | Help, 2026-10-04: inline config is read (`opencode debug config`); denial not run | Cannot |
 | `--no-web` | Run, 2026-09 | Run, 2026-09 | Nothing to take away | Help, 2026-10-04: `webfetch` deny reaches the resolved config; not run | No web tool |
 | Resolves `/<skill>` in a prompt | Run, 2026-09 | Run, 2026-09, in the skills repository only | Not used | Not used | Not used |
-| Lists the kit's skills in a worktree | Run, 2026-09 | Run, 2026-09 | Unknown | **Observed 2026-10-04: 0 of 5 listed** by `opencode debug skill` on the symlinked layout | Docs: reads `.agents/skills` |
-| A real lane opens a draft pull request | Run, 2026-09 | Run, 2026-09 | Not run | Not run | Not run |
+| Lists Établi's skills in a worktree | Run, 2026-09 | Run, 2026-09 | Unknown | **Observed 2026-10-04: 0 of 5 listed** by `opencode debug skill` on the symlinked layout | Docs: reads `.agents/skills` |
+| A real bench opens a draft pull request | Run, 2026-09 | Run, 2026-09 | Not run | Not run | Not run |
 
 The launcher does not depend on a harness listing the skills: it tells every
 harness except Claude Code, and Copilot CLI in the skills repository, to read
@@ -60,21 +60,21 @@ skills documentation.
 | # | Assumption under test | Result |
 |---|---|---|
 | 1 | `copilot -p` discovers and loads skills from `.agents/skills/` inside a git worktree | Confirmed |
-| 2 | `claude -p` runs a lane in a worktree, and tool deny rules are enforced | Confirmed |
+| 2 | `claude -p` runs a bench in a worktree, and tool deny rules are enforced | Confirmed |
 | 3 | A create-only push of `task/<id>` is a sound claim lock | **Refuted as specified.** Fixed by the claim commit |
 | 4 | Both harnesses accept `/<skill> <args>` as a `-p` prompt, from `.agents/skills/` | **Half refuted.** Confirmed for Copilot CLI; Claude Code needs `.claude/skills/`, fixed by symlinks |
-| 5 | A plain "what's next" or "what's the status" reaches the kit and gets a correct answer | **Refuted.** 1 of 4 routed, Copilot answered wrongly twice. Fixed by the description, `where.sh`, and a routing block in `AGENTS.md` |
-| 6 | A Claude Code lane under `--permission-mode acceptEdits` can run the repository's validation commands | **Refuted.** Every shell command is denied in `-p` mode. Fixed by `--allowedTools Bash`, with the deny rules still winning |
+| 5 | A plain "what's next" or "what's the status" reaches Établi and gets a correct answer | **Refuted.** 1 of 4 routed, Copilot answered wrongly twice. Fixed by the description, `where.sh`, and a routing block in `AGENTS.md` |
+| 6 | A Claude Code bench under `--permission-mode acceptEdits` can run the repository's validation commands | **Refuted.** Every shell command is denied in `-p` mode. Fixed by `--allowedTools Bash`, with the deny rules still winning |
 | 7 | Copilot CLI accepts the model names the launcher passes | **Refuted** for every label but `terra`: `Model "luna" from --model flag is not available`. Fixed by a per-harness model id, taken from the `/models` picker. Superseded: the launcher no longer carries ids, see [ADR-006](decisions/ADR-006-capability-tiers.md) |
-| 8 | Lanes can reach the web, and `--no-web` takes it away on both harnesses | **Half refuted.** Copilot lanes always had it; Claude lanes never did. Fixed by allowing it on Claude, and by an off switch on both |
-| 9 | A lane started in another repository loads the kit's skills from the planning repository through `--add-dir` | **Half refuted.** Confirmed for Claude Code; Copilot CLI loads only an added directory's `.github/skills/`. Fixed by naming the skill file in a Copilot lane's prompt |
-| 10 | `claude -p` accepts `--advisor`, and refuses a bad pairing before the lane changes anything | Confirmed. A model that cannot advise exits 1 at startup; one less capable than the main model is warned about and dropped |
-| 11 | `npx skills add` and `npx skills update` keep the kit's five skills in one directory | **Refuted** for an install naming only `claude-code`: copies, then a split after update. Fixed by installing with an agent that reads `.agents/skills/`, and by a check in `where.sh` and the launcher |
+| 8 | Benches can reach the web, and `--no-web` takes it away on both harnesses | **Half refuted.** Copilot benches always had it; Claude benches never did. Fixed by allowing it on Claude, and by an off switch on both |
+| 9 | A bench started in another repository loads Établi's skills from the planning repository through `--add-dir` | **Half refuted.** Confirmed for Claude Code; Copilot CLI loads only an added directory's `.github/skills/`. Fixed by naming the skill file in a Copilot bench's prompt |
+| 10 | `claude -p` accepts `--advisor`, and refuses a bad pairing before the bench changes anything | Confirmed. A model that cannot advise exits 1 at startup; one less capable than the main model is warned about and dropped |
+| 11 | `npx skills add` and `npx skills update` keep Établi's five skills in one directory | **Refuted** for an install naming only `claude-code`: copies, then a split after update. Fixed by installing with an agent that reads `.agents/skills/`, and by a check in `where.sh` and the launcher |
 
 ## 1. Skill discovery inside a worktree
 
-Both harnesses reach a kit copy in the worktree, not only in the main checkout.
-This is what allows one kit copy per repository to serve every lane.
+Both harnesses reach an Établi copy in the worktree, not only in the main checkout.
+This is what allows one Établi copy per repository to serve every bench.
 
 Read this together with test 4, which narrows the result: Copilot CLI registers
 `.agents/skills/` as project skills, while Claude Code registers `.claude/skills/`
@@ -91,8 +91,8 @@ returns the token. Listing alone is not sufficient evidence; check both.
 
 **Operational consequence.** `copilot skill list` also reports `Personal skills`
 from `~/.copilot/skills/` and `~/.agents/skills/`. Developer machines carry
-personal copies of skills that compete with the kit for the same triggers, and
-an older personal copy of a kit skill will shadow the intended behavior in ways
+personal copies of skills that compete with Établi for the same triggers, and
+an older personal copy of an Établi skill will shadow the intended behavior in ways
 that are hard to see from inside a session. Day 0 preparation must inventory
 personal skills on each machine and disable the conflicting ones.
 
@@ -119,7 +119,7 @@ The specified claim was a create-only push of the task branch:
 git push --force-with-lease=refs/heads/task/<id>: origin HEAD:refs/heads/task/<id>
 ```
 
-This is atomic only while the ref does not exist. Every lane starts from the
+This is atomic only while the ref does not exist. Every bench starts from the
 same base commit, so once the winner's push lands, a second developer pushing
 that same commit to that same ref is a no-op: git answers `Everything
 up-to-date` and **exits 0**. The second developer's tooling reads success and
@@ -153,7 +153,7 @@ race, the late claim, a free claim, and holder identity.
 
 ## 4. Invoking a skill as a slash command
 
-The lane launcher used to pass a paragraph of prose naming the skill. That is a
+The bench launcher used to pass a paragraph of prose naming the skill. That is a
 suggestion, not an invocation: the model is free to interpret it, and in one
 observed run it read `SKILL.md` as an ordinary file and followed it without the
 skill ever being registered. The instructions then compete with the task text
@@ -195,9 +195,9 @@ supported way to create it. Verified against this repository: installing into a
 throwaway target, committing the result, and adding a worktree reproduces every
 symlink with its target resolving.
 
-**Operational consequence.** A repository adopting the kit installs it with that
+**Operational consequence.** A repository adopting Établi installs it with that
 CLI and commits what it produces. Hand-copying only `.agents/skills/` silently
-degrades every Claude Code lane to prose interpretation.
+degrades every Claude Code bench to prose interpretation.
 
 **Installer note.** `--all` is shorthand for every skill and every agent, and
 also writes a full copy under `agent/` for the other agents the CLI supports.
@@ -205,12 +205,12 @@ Scope it with repeated `-a` flags (`-a claude-code -a github-copilot`); a
 comma-separated list is rejected even when each name is valid.
 
 **Second consequence.** Slash invocation makes skill *names* part of the
-interface. A personal skill with the same name shadows the kit's, which makes the
+interface. A personal skill with the same name shadows Établi's, which makes the
 `etabli-orchestrator` prefix a correctness measure and not only a readability one.
 
-## 5. Routing plain questions to the kit
+## 5. Routing plain questions to Établi
 
-The kit is meant to be the project's assistant, so a developer asking in their
+Établi is meant to be the project's assistant, so a developer asking in their
 own words has to reach it. Nothing had tested that: every earlier test invoked a
 skill by name.
 
@@ -218,7 +218,7 @@ Assumption under test: *"what should we do next?"* and *"what's the current
 status of this project?"*, asked with no skill named, load `etabli-orchestrator`
 and produce a correct answer.
 
-Method: a throwaway repository with the kit installed by symlink, as the
+Method: a throwaway repository with Établi installed by symlink, as the
 `skills` CLI lays it out, stopped partway through a run. Requirements, a
 contract and the decomposition are approved, and the decomposition says
 `Run as: serially`. `mapping-001` is merged with its branch deleted, `mapping-002`
@@ -231,7 +231,7 @@ whose branch was deleted from one never started, and the serial run rules out
 starting the ready task while another is in flight. The correct answer is to
 wait for `mapping-002`, then take `export-001`.
 
-Before, with the kit as it was:
+Before, with Établi as it was:
 
 | Harness | Question | Routed to | Answer | Cost |
 |---|---|---|---|---|
@@ -276,14 +276,14 @@ it read.
 One run per cell is evidence, not a rate. Re-run the matrix after changing the
 orchestrator's description, and after any harness upgrade.
 
-## 6. Running validation in an unattended Claude Code lane
+## 6. Running validation in an unattended Claude Code bench
 
 Test 2 proved that a denied command is refused. It did not prove that an
-allowed one runs, and a lane that cannot run the repository's tests or its own
+allowed one runs, and a bench that cannot run the repository's tests or its own
 skill's helper scripts reports every criterion as unverified at best.
 
 Assumption under test: `claude -p` with `--permission-mode acceptEdits`, as the
-launcher started Claude lanes, can run a shell command.
+launcher started Claude benches, can run a shell command.
 
 Method: the same paired control as test 2, in throwaway repositories, on
 Claude Code 2.1.280 with `haiku`. The model is asked to write a proof file with
@@ -300,27 +300,27 @@ a harness refusal from a model that declined on its own.
 
 `acceptEdits` approves file edits, not commands, and `-p` has no one to ask, so
 the request is denied and the session still exits 0. Nothing in a text-mode log
-marks the difference between a lane that validated and one that could not.
+marks the difference between a bench that validated and one that could not.
 
-**Fix.** The launcher passes `--allowedTools Bash` to Claude lanes, which matches
-the reach `--allow-all-tools` gives Copilot lanes. The third row is the one that
+**Fix.** The launcher passes `--allowedTools Bash` to Claude benches, which matches
+the reach `--allow-all-tools` gives Copilot benches. The third row is the one that
 matters for safety: a deny rule still wins over the broad allow, so the
 `terraform apply` and `terraform destroy` denies hold.
 
-**What else a lane can reach.** A second probe, with the launcher's exact flags,
+**What else a bench can reach.** A second probe, with the launcher's exact flags,
 asked the model to try each tool once. Read, Write, Edit, Bash and subagents ran.
 The harness denied three calls: `WebFetch`, `WebSearch`, and a Write outside
-the worktree. The lane cannot read documentation from the web; everything it
+the worktree. The bench cannot read documentation from the web; everything it
 builds against has to be in the repository or its contracts. The outside write
 is the isolation working, though Bash is not held to it.
 
-**Consequence for reading old logs.** Every Claude lane launched before this
+**Consequence for reading old logs.** Every Claude bench launched before this
 fix ran without a shell: the repository contract detector, the tests and the
 linters were all refused.
 
 ## 7. Model names on Copilot CLI
 
-The launcher passed the kit's label, `sonnet` or `luna`, straight to
+The launcher passed Établi's label, `sonnet` or `luna`, straight to
 `copilot --model`. Copilot CLI 1.0.88 refuses it before the session starts:
 
 ```text
@@ -328,7 +328,7 @@ Error: Model "luna" from --model flag is not available.
 ```
 
 Only `terra` had been mapped to a real id, `gpt-5.6-terra`. Every other Copilot
-lane, including a portable label falling back from a missing `claude`, died at
+bench, including a portable label falling back from a missing `claude`, died at
 startup with its claim held.
 
 **Fix.** The launcher resolves the label per harness, after any fallback: Claude
@@ -349,29 +349,29 @@ On 2026-09-23:
 | `sonnet` | `claude-sonnet-5` | 5.7 |
 | `opus` | `claude-opus-5.5` | 11.17 |
 
-A lane on an id the account cannot use exits at once, having changed nothing;
+A bench on an id the account cannot use exits at once, having changed nothing;
 the launcher then releases its claim.
 
 **Superseded on 2026-10-02.** The launcher no longer holds model ids, and the
-table above is a dated record, not a mapping the kit ships. A tier names a model
+table above is a dated record, not a mapping Établi ships. A tier names a model
 only when a developer's `tiers.conf` does, and a mapping names the harness it is
 for, so an id never reaches a harness that would refuse it. That is this
 finding's lesson kept as a rule. The probe above still checks an id before it
 goes into a mapping; see [ADR-006](decisions/ADR-006-capability-tiers.md).
 
-## 8. Web access in a lane
+## 8. Web access in a bench
 
-Test 6 found Claude lanes denied `WebFetch` and `WebSearch`. The question was
-whether Copilot lanes were the same, and how to switch web access on and off
+Test 6 found Claude benches denied `WebFetch` and `WebSearch`. The question was
+whether Copilot benches were the same, and how to switch web access on and off
 on each side.
 
 Method: a model asked to fetch
 `https://docs.python.org/3/library/unittest.html` with its web tool and nothing
-else, headless, with the lane's flags. `example.com` answered 403 from this
+else, headless, with the bench's flags. `example.com` answered 403 from this
 network whatever the flags, so it cannot tell a refusal from a failure; a
 documentation site can.
 
-| Harness | Flags beyond the lane's | Result |
+| Harness | Flags beyond the bench's | Result |
 |---|---|---|
 | Claude Code | none | refused: `WebFetch` in `permission_denials` |
 | Claude Code | `--allowedTools ... WebFetch WebSearch` | page title returned |
@@ -396,9 +396,9 @@ still reach the network.
 
 ## 9. Skills from an added directory
 
-A project spread over several repositories keeps the kit and its plan in one
-of them. A lane working in another repository gets the planning one with
-`--add-dir`. The question was whether a slash invocation then finds the kit's
+A project spread over several repositories keeps Établi and its plan in one
+of them. A bench working in another repository gets the planning one with
+`--add-dir`. The question was whether a slash invocation then finds Établi's
 skills there.
 
 Method: two fresh repositories side by side, `home` holding a `probe-skill`
@@ -417,18 +417,18 @@ on Claude Code 2.1.281 (`haiku`) and Copilot CLI 1.0.88 (`claude-haiku-4.5`).
 `.github/skills`, while `.agents/skills/` is only read from the working
 directory's repository.
 
-**Fix.** A lane in another repository gets `--add-dir <planning repository>` on
+**Fix.** A bench in another repository gets `--add-dir <planning repository>` on
 both harnesses, for the task file, contracts and decisions. Claude Code keeps
 the slash invocation. Copilot CLI is told to read
 `etabli-implement/SKILL.md` by absolute path and follow it, which needs no
 extra install in any repository.
 
-## 10. An advisor in a lane
+## 10. An advisor in a bench
 
 A tier can name an `advisor`, which the Claude Code adapter passes as
 `--advisor`. The flag is not in `claude --help`, so the question was whether a
 headless session takes it, and what a pairing the API would refuse does to a
-lane.
+bench.
 
 Method: `claude -p "Reply with the single word ok."` with `--model` and
 `--advisor`, from an empty directory, on Claude Code 2.1.295, reading the
@@ -441,17 +441,17 @@ exit status.
 | `opus` | `claude-haiku-4-5` | `Error: The model "claude-haiku-4-5" cannot be used as an advisor.`, exit 1 |
 | `sonnet` | `bogus-model` | the same error, exit 1 |
 
-An unusable advisor fails the lane at startup, before it changes anything, and
+An unusable advisor fails the bench at startup, before it changes anything, and
 the launcher releases its claim as it does for any failed session. A weaker one
-costs nothing but the warning in the lane's log.
+costs nothing but the warning in the bench's log.
 
-Not measured: whether a lane with an advisor delivers better pull requests than
+Not measured: whether a bench with an advisor delivers better pull requests than
 one without. That is the claim that would earn the key its place; until it is
 measured, `advisor` is a developer's choice, not a recommendation.
 
 ## 11. Installing and updating with the skills CLI
 
-The kit's scripts find each other as siblings, `$(dirname "$0")/../../<skill>`,
+Établi's scripts find each other as siblings, `$(dirname "$0")/../../<skill>`,
 which holds only while all five skills sit in one directory. The question was
 whether the `skills` CLI keeps them there through an install and an update.
 The `tiroir` pilot found that it does not, and this test reproduces it.
@@ -468,7 +468,7 @@ changed, and run `npx skills update -p -y`.
 In the split layout, `.claude/skills/etabli-orchestrator/scripts/../../etabli-implement`
 resolves through the link to `.agents/skills/etabli-implement`, which does
 not exist, whichever directory the script was reached from. The launcher
-passed that path to each lane without checking it.
+passed that path to each bench without checking it.
 
 Re-running `add -a claude-code` on the split install made all five copies again
 and left the four directories in `.agents/skills/` behind, stale for any

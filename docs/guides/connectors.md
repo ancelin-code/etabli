@@ -2,13 +2,13 @@
 
 Git stays the only place where work is decided. Other tools, a Jira board for
 management or Confluence pages for readers who never open the forge, get a
-one-way copy of it: a **connector** reads the kit's state and makes the tool
+one-way copy of it: a **connector** reads Établi's state and makes the tool
 match it. Connectors live in their own repositories, with their own
-credentials and configuration, so the kit holds nothing tool-specific.
+credentials and configuration, so Établi holds nothing tool-specific.
 
 ## The snapshot
 
-The kit's side is one command. From the planning repository, it prints the
+Établi's side is one command. From the planning repository, it prints the
 whole project as JSON: milestones, epics and what each delivers, tasks with
 the state `status.sh` gives them, their repository and pull request, the
 coverage of each requirement, and the planning documents.

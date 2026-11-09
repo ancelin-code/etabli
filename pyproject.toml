@@ -4,7 +4,7 @@
 [project]
 name = "etabli"
 version = "0.1.0"
-description = "Établi: Agent Skills that take a project from requirements to parallel lanes to draft pull requests"
+description = "Établi: Agent Skills that take a project from requirements to parallel benches to draft pull requests"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.13,<3.14"
@@ -22,7 +22,7 @@ classifiers = [
 # -----------------------------------------------
 # Dependencies management
 # -----------------------------------------------
-# Every checker below is a public PyPI package: the kit needs no private index.
+# Every checker below is a public PyPI package: Établi needs no private index.
 [dependency-groups]
 lint = [
     "cisco-ai-skill-scanner>=2.0.9,<3.0",

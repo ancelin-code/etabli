@@ -1,4 +1,4 @@
-# ADR-012: The kit supports GitHub only, for now
+# ADR-012: Établi supports GitHub only, for now
 
 **Status:** accepted
 **Date:** 2026-11-06
@@ -14,21 +14,21 @@ the forge through `gh`:
   `in-review` and `done`.
 - `where.sh` reads a pull request's number, labels and changed files, to choose
   its review lenses.
-- `publish-lane.sh` opens the draft pull request and labels it.
+- `publish-bench.sh` opens the draft pull request and labels it.
 
 Other forges (GitLab, Bitbucket, Forgejo, Azure DevOps) have the same concepts
-under other names and other CLIs. The kit has only ever run against GitHub.
+under other names and other CLIs. Établi has only ever run against GitHub.
 
 ## Decision
 
-The kit requires GitHub and `gh` 2.0 or later, and says so in the README and the
+Établi requires GitHub and `gh` 2.0 or later, and says so in the README and the
 installation page. Making the forge replaceable is planned for a later version.
 
 ## Alternatives considered
 
 - **A forge adapter now, on the model of `harness.sh`.** Rejected for this
   release: it would be written against one forge and guessed for the others. The
-  harness adapters are only trustworthy where a lane ran on the real CLI
+  harness adapters are only trustworthy where a bench ran on the real CLI
   ([ADR-008](ADR-008-harness-adapters.md)); a forge adapter nobody has run is
   worse, because its failure is a wrong answer to "is this task done".
 - **Derive "done" from git alone**, by keeping task branches after the merge, or
@@ -40,7 +40,7 @@ installation page. Making the forge replaceable is planned for a later version.
 ## Consequences
 
 - A project on another forge cannot use the status, follow and publish helpers.
-  The skills that only read and write files under `delivery/` still work.
+  The skills that only read and write files under `specs/` still work.
 - The seam for later is narrow, which is why waiting costs little: four
   questions put to the forge, namely the pull request of a branch and its state,
   its labels and changed files, opening a draft pull request, and adding a
