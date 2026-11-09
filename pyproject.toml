@@ -82,6 +82,8 @@ disable = [
 ]
 
 [tool.rumdl.per-file-ignores]
+# Opens with a centred logo and title in HTML, as the sibling project does.
+"README.md" = ["MD041"]
 # A section appended to a project's AGENTS.md, not a document of its own.
 ".agents/skills/etabli-orchestrator/assets/agents-routing.md" = ["MD041"]
 # GitHub shows this as the pre-filled description, which has no title.

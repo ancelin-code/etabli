@@ -1,6 +1,6 @@
 # Agent Instructions for the etabli repository
 
-This repository holds the AI-native **Établi**: a family of Agent Skills
+This repository holds **Établi**: a family of Agent Skills
 that route a project from requirements through parallel implementation benches to
 draft pull requests.
 

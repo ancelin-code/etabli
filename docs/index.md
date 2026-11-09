@@ -1,6 +1,6 @@
 # Établi
 
-**Agent Skills for AI-native delivery.** *Établi* is French for *workbench*.
+**Craft software with AI agents, one bench at a time.** *Établi* is French for *workbench*.
 
 Établi takes a project from an intent to merged pull requests: requirements
 and a design spine, decomposition into tasks, parallel implementation benches,

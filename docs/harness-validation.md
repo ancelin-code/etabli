@@ -5,13 +5,13 @@ invalidate one assumption cheaply, before anything is built on top of it.
 
 This is a record for maintainers, not a document any skill loads at run time.
 Every conclusion that changes behaviour is already encoded where it acts: the
-install steps and the shadowing check in the README, the claim rule in the
+install steps and the shadowing check in the installation guide, the claim rule in the
 orchestrator's `conventions.md`, the symlink rule in `AGENTS.md`, the slash
 invocation in the bench launcher, and the orchestrator's description, `where.sh`
 and routing block. What is kept here is the evidence behind them.
 
 These results are true of the versions below and of nothing else. When to re-run
-them is in the README, under Maintenance.
+them is at the end of this file.
 
 Environment at time of testing (2026-09-21, test 4 on 2026-09-22, tests 5 to
 8 on 2026-09-23):
@@ -475,8 +475,30 @@ and left the four directories in `.agents/skills/` behind, stale for any
 harness that reads them. Removing every `etabli-*` directory under both
 paths, then installing with both agents, restored a whole install.
 
-**Fix.** The README installs with an agent that reads `.agents/skills/`, warns
+**Fix.** The installation guide installs with an agent that reads `.agents/skills/`, warns
 against `-a claude-code` alone, and gives the repair. `where.sh` checks that
 the other four skills are beside the orchestrator and reports
 `NEXT repair-install` when one is not. The launcher refuses to start without
 `etabli-implement`.
+
+## Re-running the checks
+
+Every rule in Établi that works around harness behaviour was earned by a test,
+and harness behaviour changes. Re-run the checks above after a Claude Code or
+Copilot CLI upgrade, and delete any rule that no longer earns its tokens. Both
+CLIs update themselves silently, so nothing announces the moment to do this:
+compare the recorded versions against `claude --version` and
+`copilot --version` before a run that matters.
+
+Two rules are worth re-checking first, because both fail quietly rather than
+loudly:
+
+- the `.claude/skills/` symlinks, which exist only because Claude Code did not
+  register `.agents/skills/`. Harmless if that changes, but dead weight.
+- slash-command invocation of a skill. If a harness stops resolving
+  `/etabli-implement <task-file>` as an invocation, every bench reverts to
+  reading the skill as prose, which makes its boundaries advisory and leaves no
+  trace in the bench log.
+
+This is a maintainer's task, not part of a run. It is deliberately not in any
+`SKILL.md`, so no agent pays tokens for it on every invocation.
