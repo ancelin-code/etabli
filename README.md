@@ -12,7 +12,7 @@
   <img alt="Harnesses: Claude Code, Copilot CLI, Codex CLI, OpenCode, Pi" src="https://img.shields.io/badge/harnesses-5-informational">
 </p>
 
-**Craft software with AI agents, one bench at a time.** *Établi* is French for
+**Craft software with AI agents, from spec to pull request.** *Établi* is French for
 *workbench*.
 
 Give an agent a project the way a craftsperson takes a commission: first the
