@@ -7,7 +7,7 @@ version = "0.1.0"
 description = "Établi: Agent Skills that take a project from requirements to parallel lanes to draft pull requests"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.13,<3.14"
 readme = "README.md"
 authors = [
     { name = "Ancelin Serre" },
@@ -16,7 +16,7 @@ keywords = []
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 # -----------------------------------------------
