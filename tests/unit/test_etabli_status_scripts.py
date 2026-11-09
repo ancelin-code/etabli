@@ -401,7 +401,7 @@ def fake_gh(
     them to a query naming their branch with --head.
 
     open_prs carries (task-id, is_draft), because draft is the whole distinction
-    between a lane still working and a task handed to a reviewer.
+    between a bench still working and a task handed to a reviewer.
 
     urls maps a task id to the pull request snapshot.sh asks for by branch.
     """
@@ -436,7 +436,7 @@ def fake_gh(
 
 
 def write_task(repo: Path, task_id: str, *, depends_on: str = "") -> None:
-    tasks = repo / "delivery" / "tasks"
+    tasks = repo / "specs" / "tasks"
     tasks.mkdir(parents=True, exist_ok=True)
     (tasks / f"{task_id}.md").write_text(
         "---\n"
@@ -538,7 +538,7 @@ class TestDerivedStatus:
         assert "blocked=2" in summary
 
     def test_a_pull_request_out_of_draft_is_in_review(self, tmp_path: Path, origin: Path) -> None:
-        """In review is what is waiting on a person rather than on a lane."""
+        """In review is what is waiting on a person rather than on a bench."""
         # Given a task with an open pull request out of draft
         dev = developer(tmp_path, origin, "devA")
         write_task(dev, "ingestion-001")
@@ -551,9 +551,9 @@ class TestDerivedStatus:
         assert rows["ingestion-001"][1] == "in-review"
 
     def test_a_draft_pull_request_is_still_in_progress(self, tmp_path: Path, origin: Path) -> None:
-        """A lane drafts its pull request the moment it opens one.
+        """A bench drafts its pull request the moment it opens one.
 
-        Counting a draft as in review would report every running lane as waiting
+        Counting a draft as in review would report every running bench as waiting
         on a reviewer, which is the opposite of the truth.
         """
         # Given a claimed task with a draft pull request
@@ -666,7 +666,7 @@ DECOMPOSITION = """# Decomposition: shop
 
 ## Source
 
-- `delivery/prd.md`
+- `specs/prd.md`
 
 ## Epics
 
@@ -680,7 +680,7 @@ It spans two lines.
 
 ## Parallelism
 
-**Run as:** lanes
+**Run as:** benches
 """
 
 
@@ -724,14 +724,14 @@ class TestSnapshot:
             "holder": None,
             "depends_on": ["ingestion-001"],
             "pull_request": None,
-            "file": "delivery/tasks/ingestion-002.md",
+            "file": "specs/tasks/ingestion-002.md",
         }
 
     def test_a_title_keeps_its_commas_and_loses_its_quotes(self, tmp_path: Path, origin: Path) -> None:
         # Given a quoted title with commas
         dev = developer(tmp_path, origin, "devA")
         write_task(dev, "ingestion-001")
-        task_file = dev / "delivery" / "tasks" / "ingestion-001.md"
+        task_file = dev / "specs" / "tasks" / "ingestion-001.md"
         task_file.write_text(
             task_file.read_text(encoding="utf-8").replace(
                 "title: Do ingestion-001", 'title: "Load HTML, Markdown and PDF"'
@@ -763,7 +763,7 @@ class TestSnapshot:
         # Given a decomposition describing the epic over two lines, with quotes and a backslash
         dev = developer(tmp_path, origin, "devA")
         write_task(dev, "ingestion-001")
-        (dev / "delivery" / "decomposition.md").write_text(DECOMPOSITION, encoding="utf-8")
+        (dev / "specs" / "decomposition.md").write_text(DECOMPOSITION, encoding="utf-8")
 
         # When a snapshot is taken
         epics = snapshot_of(run_snapshot(["--no-fetch"], cwd=dev))["epics"]
@@ -791,11 +791,11 @@ class TestSnapshot:
         # Given a PRD, a decomposition, a contract and a decision record
         dev = developer(tmp_path, origin, "devA")
         write_task(dev, "ingestion-001")
-        delivery = dev / "delivery"
-        (delivery / "prd.md").write_text("# Shop requirements\n", encoding="utf-8")
-        (delivery / "decomposition.md").write_text(DECOMPOSITION, encoding="utf-8")
-        (delivery / "contracts").mkdir()
-        (delivery / "contracts" / "search-api.md").write_text("# Search API\n", encoding="utf-8")
+        specs = dev / "specs"
+        (specs / "prd.md").write_text("# Shop requirements\n", encoding="utf-8")
+        (specs / "decomposition.md").write_text(DECOMPOSITION, encoding="utf-8")
+        (specs / "contracts").mkdir()
+        (specs / "contracts" / "search-api.md").write_text("# Search API\n", encoding="utf-8")
         (dev / "docs" / "adr").mkdir(parents=True)
         (dev / "docs" / "adr" / "ADR-001-storage.md").write_text("# ADR-001: Storage\n", encoding="utf-8")
 
@@ -804,10 +804,10 @@ class TestSnapshot:
 
         # Then each is listed with its kind and title
         assert documents == [
-            {"kind": "requirements", "path": "delivery/prd.md", "title": "Shop requirements"},
-            {"kind": "decomposition", "path": "delivery/decomposition.md", "title": "Decomposition: shop"},
+            {"kind": "requirements", "path": "specs/prd.md", "title": "Shop requirements"},
+            {"kind": "decomposition", "path": "specs/decomposition.md", "title": "Decomposition: shop"},
             {"kind": "decision", "path": "docs/adr/ADR-001-storage.md", "title": "ADR-001: Storage"},
-            {"kind": "contract", "path": "delivery/contracts/search-api.md", "title": "Search API"},
+            {"kind": "contract", "path": "specs/contracts/search-api.md", "title": "Search API"},
         ]
 
     def test_fails_when_status_cannot_be_derived(self, tmp_path: Path, origin: Path) -> None:
@@ -873,13 +873,13 @@ The server runs.
 
 
 def write_plan(repo: Path, *, plan: str = PLAN) -> None:
-    (repo / "delivery").mkdir(exist_ok=True)
-    (repo / "delivery" / "prd.md").write_text(PRD, encoding="utf-8")
-    (repo / "delivery" / "decomposition.md").write_text(plan, encoding="utf-8")
+    (repo / "specs").mkdir(exist_ok=True)
+    (repo / "specs" / "prd.md").write_text(PRD, encoding="utf-8")
+    (repo / "specs" / "decomposition.md").write_text(plan, encoding="utf-8")
 
 
 def write_covering_task(repo: Path, task_id: str, covers: str, *, epic: str = "server") -> None:
-    tasks = repo / "delivery" / "tasks"
+    tasks = repo / "specs" / "tasks"
     tasks.mkdir(parents=True, exist_ok=True)
     (tasks / f"{task_id}.md").write_text(
         f"---\nid: {task_id}\ntitle: Do {task_id}\nepic: {epic}\ndepends_on: []\nparallel: true\n"
@@ -889,7 +889,7 @@ def write_covering_task(repo: Path, task_id: str, covers: str, *, epic: str = "s
 
 
 def write_review(repo: Path, slug: str, status: str) -> None:
-    folder = repo / "delivery" / "milestones"
+    folder = repo / "specs" / "milestones"
     folder.mkdir(exist_ok=True)
     (folder / f"{slug}.md").write_text(f"# Milestone review: {slug}\n\n**Status:** {status}\n", encoding="utf-8")
 
@@ -905,7 +905,7 @@ class TestMilestoneState:
         # Given a decomposition without milestones
         dev = developer(tmp_path, origin, "devA")
         write_task(dev, "ingestion-001")
-        (dev / "delivery" / "decomposition.md").write_text(DECOMPOSITION, encoding="utf-8")
+        (dev / "specs" / "decomposition.md").write_text(DECOMPOSITION, encoding="utf-8")
 
         # When status is read
         result = run_status(["--no-fetch"], cwd=dev)
@@ -1048,7 +1048,7 @@ class TestCoverage:
         # Given a PRD without requirement ids
         dev = developer(tmp_path, origin, "devA")
         write_task(dev, "ingestion-001")
-        (dev / "delivery" / "prd.md").write_text("# P\n\n- one server\n", encoding="utf-8")
+        (dev / "specs" / "prd.md").write_text("# P\n\n- one server\n", encoding="utf-8")
 
         # When coverage is read
         result = run_coverage([], cwd=dev, bin_dir=fake_gh(tmp_path))
@@ -1138,7 +1138,7 @@ class TestSnapshotMilestones:
         # Given a project without milestones or requirement ids
         dev = developer(tmp_path, origin, "devA")
         write_task(dev, "ingestion-001")
-        (dev / "delivery" / "prd.md").write_text("# Shop requirements\n\n- loads documents\n", encoding="utf-8")
+        (dev / "specs" / "prd.md").write_text("# Shop requirements\n\n- loads documents\n", encoding="utf-8")
 
         # When a snapshot is taken
         snapshot = snapshot_of(run_snapshot(["--no-fetch"], cwd=dev))

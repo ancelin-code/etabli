@@ -1,13 +1,13 @@
 # The Requirements (PRD)
 
-The PRD, the product requirements document, is `delivery/prd.md`. It is the
-first file the route writes and the one everything else is built from: the
+The PRD, the product requirements document, is `specs/prd.md`. It is the
+first file the workflow writes and the one everything else is built from: the
 decisions and contracts answer it, the tasks cite its ids, and the coverage of
 each requirement is derived from them. A repository has one, and you approve it
 before anything is designed or cut.
 
 It says **what** must be true and **why**, never **how**. Choosing a technology
-or a structure comes later, in the [design spine](route.md#the-artifacts),
+or a structure comes later, in the [design spine](workflow.md#the-artifacts),
 with better information.
 
 ## What it contains
@@ -17,8 +17,8 @@ with better information.
 | Status and approval | `draft` or `approved`, and who approved it, and when. |
 | Problem | Two or three sentences: what is wrong or missing today, and for whom. No solution here. |
 | Outcomes | What must be true when the work is done, each one observable, each with a stable id. The tasks and the milestones point at these ids. |
-| Invariants | What must not change. They protect the existing system and bound every lane. |
-| Out of scope | The nearby things somebody would otherwise build, named so no lane invents them. |
+| Invariants | What must not change. They protect the existing system and bound every bench. |
+| Out of scope | The nearby things somebody would otherwise build, named so no bench invents them. |
 | Assumptions | What was assumed rather than asked, and what changes if it is wrong, so you can correct it in one pass. |
 | Open questions | What genuinely blocks work, and who can answer it. |
 | Sources | The material it was built from. |
@@ -58,7 +58,7 @@ keep pointing at the same requirement over time.
 2. **Ask.** At most five questions, asked together, and only ones whose answer
    would change what gets built. An answer it could reasonably assume is stated
    as an assumption instead, for you to correct.
-3. **Write.** It writes `delivery/prd.md` from the template, for somebody who
+3. **Write.** It writes `specs/prd.md` from the template, for somebody who
    was not in the conversation.
 4. **Check.** It tests the document before handing it over: could a developer
    who missed every conversation start from this, and is each requirement
@@ -81,7 +81,7 @@ file is revised, and the decomposition turns the new work into new epics.
 ## The template and the guidelines
 
 The structure above is the template, `prd.template.md`, and the method is the
-`etabli-spec` skill itself. Both ship with the kit, under
+`etabli-spec` skill itself. Both ship with Établi, under
 `.agents/skills/etabli-spec/`, and the agent follows them without you doing
 anything. You can read the
 [template](https://github.com/ancelin-code/etabli/blob/main/.agents/skills/etabli-spec/assets/prd.template.md)

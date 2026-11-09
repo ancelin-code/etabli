@@ -5,7 +5,7 @@
 
 ## Context
 
-The kit claims a task by creating the remote branch `task/<id>`, and derives
+Établi claims a task by creating the remote branch `task/<id>`, and derives
 status by asking whether that ref exists. Conventional Branch would name the
 same branch by change type, `feat/<description>` or `fix/<description>`, which
 is the convention the rest of the repository follows for commits.

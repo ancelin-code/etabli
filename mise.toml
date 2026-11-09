@@ -1,7 +1,7 @@
 min_version = "2026.8.1"
 
 [tools]
-python = "3.12"
+python = "3.13"
 uv = "0.12.10"
 prek = "0.5.2"
 ruff = "0.16.6"
@@ -48,12 +48,12 @@ run = [
 
 [tasks."test:python"]
 description = "Run the behavioural tests for one supported Python version."
-usage = 'arg "<version>" { choices "3.12" }'
+usage = 'arg "<version>" { choices "3.13" }'
 run = 'uv run --isolated --locked --only-group=test --python="$usage_version" bash .mise/scripts/test-python "$usage_version"'
 
 [tasks.test]
 description = "Run the behavioural tests."
-run = [{ task = "test:python", args = ["3.12"] }]
+run = [{ task = "test:python", args = ["3.13"] }]
 
 [tasks.lint]
 description = "Run every repository lint task and accumulate failures."

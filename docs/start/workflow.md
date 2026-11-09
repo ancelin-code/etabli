@@ -1,12 +1,12 @@
-# Drive the Route
+# Drive the Workflow
 
 !!! info "The orchestrator drives this for you"
 
     In practice you type `/etabli-orchestrator` and approve each phase. The
     commands on this page, the launcher and the follow loop, are what the
-    orchestrator runs in the background: it starts the lanes, keeps the set
+    orchestrator runs in the background: it starts the benches, keeps the set
     moving as pull requests merge, and tells you when one needs you, to review
-    a pull request or to look at a failed lane. They are shown so you know what
+    a pull request or to look at a failed bench. They are shown so you know what
     happens, and so you can run them by hand; you never have to.
 
 ## Ask for what you want built
@@ -17,51 +17,51 @@ Tell the orchestrator what you want built:
 /etabli-orchestrator <what to build>
 ```
 
-In a repository with no `delivery/prd.md` yet, that starts the requirements.
+In a repository with no `specs/prd.md` yet, that starts the requirements.
 Once the file exists, the same request revises it, and decomposition turns the
 new work into new epics. The repository is the project, so there is never a
 second one to start.
 
 Ask it where things stand at any time, in your own words: *"what's next?"*,
 *"what's the status?"*, *"who is on what?"*. The answer comes from
-`etabli-orchestrator/scripts/where.sh`, which reads `delivery/` and git in one
+`etabli-orchestrator/scripts/where.sh`, which reads `specs/` and git in one
 call and names the next action. For each pull request in review, it also names
 the review skills to run on it.
 
 ## Approve each phase
 
 Each invocation routes one phase, which ends by writing its artifact under
-`delivery/` and stopping. Approve that artifact, then invoke the orchestrator
+`specs/` and stopping. Approve that artifact, then invoke the orchestrator
 again for the next phase: it keeps nothing between them and re-reads where you
-are from `delivery/`, so no session has to stay alive across a gate.
+are from `specs/`, so no session has to stay alive across a gate.
 
-The phases and their gates are described in [The Route](../concepts/route.md).
+The phases and their gates are described in [The Workflow](../concepts/workflow.md).
 
-## Start the lanes
+## Start the benches
 
-To start lanes once tasks are approved:
+To start benches once tasks are approved:
 
 ```sh
 sh .agents/skills/etabli-status/scripts/status.sh --ready \
   | awk '$1=="TASK"{print $2}' \
-  | sh .agents/skills/etabli-orchestrator/scripts/launch-lanes.sh --dry-run
+  | sh .agents/skills/etabli-orchestrator/scripts/launch-benches.sh --dry-run
 ```
 
-Drop `--dry-run` to start real lanes. Each lane ends as a draft pull request:
-once its session exits cleanly, `publish-lane.sh` commits the change, pushes
-it, and opens the pull request with the lane's handoff report, written in the
-repository's pull request template when it has one. A lane that stopped on a
-bad task reverts its attempt and publishes nothing. A lane whose session failed
+Drop `--dry-run` to start real benches. Each bench ends as a draft pull request:
+once its session exits cleanly, `publish-bench.sh` commits the change, pushes
+it, and opens the pull request with the bench's handoff report, written in the
+repository's pull request template when it has one. A bench that stopped on a
+bad task reverts its attempt and publishes nothing. A bench whose session failed
 before doing anything, on an expired login for example, gives its claim back
 by itself. Tasks marked `parallel: false` are held back until they can run
 alone, so re-run the launcher after each merge.
 
-!!! danger "Lanes have web access by default"
+!!! danger "Benches have web access by default"
 
-    A lane can fetch pages and search the web, which helps it read a library's
-    documentation, and it is a prompt-injection path: the lane runs unattended
+    A bench can fetch pages and search the web, which helps it read a library's
+    documentation, and it is a prompt-injection path: the bench runs unattended
     with a shell and your git credentials, and a fetched page is text the model
-    may act on. Pass `--no-web` to the launcher when lanes should build from
+    may act on. Pass `--no-web` to the launcher when benches should build from
     the repository and its contracts alone, for example on a codebase with
     secrets in reach. It removes the web tools on every harness; the shell can
     still reach the network, so it narrows the path rather than closing it.
@@ -82,7 +82,7 @@ merged, or when the remaining tasks can never become ready. With milestones, it
 stops at the end of each one with a `MILESTONE` line, and never starts the
 next.
 
-With `--exit-on-human` it also exits (code 4) when a lane publishes or fails,
+With `--exit-on-human` it also exits (code 4) when a bench publishes or fails,
 for a harness that cannot report a background command's output as it arrives:
 the command ending is the signal, and the agent runs it again. The
 orchestrator starts the loop for you after the first launch.

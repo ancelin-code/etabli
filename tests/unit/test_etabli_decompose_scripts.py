@@ -1,7 +1,7 @@
 """Behavioural tests for the etabli-decompose skill's validator.
 
 ``validate-tasks.sh`` is the gate between an approved decomposition and the
-lanes that build on it, so the tests focus on the task sets it must reject: the
+benches that build on it, so the tests focus on the task sets it must reject: the
 ones whose cost is paid later by several developers at once.
 """
 
@@ -56,7 +56,7 @@ def write_task(
 
 
 def write_summary(
-    tasks_dir: Path, groups: dict[str, list[str]] | None = None, run_as: str = "lanes", milestones: str = ""
+    tasks_dir: Path, groups: dict[str, list[str]] | None = None, run_as: str = "benches", milestones: str = ""
 ) -> Path:
     """Write the decomposition summary the validator cross-checks.
 
@@ -132,12 +132,12 @@ class TestRunAs:
         assert "ingestion-002" in result.stdout
         assert "parallel must be false" in result.stdout
 
-    def test_rejects_lanes_when_every_task_runs_alone(self, tmp_path: Path) -> None:
-        # Given a lanes set where every task runs alone
+    def test_rejects_benches_when_every_task_runs_alone(self, tmp_path: Path) -> None:
+        # Given a benches set where every task runs alone
         tasks = tmp_path / "tasks"
         write_task(tasks, "ingestion-001", parallel="false")
         write_task(tasks, "ingestion-002", parallel="false")
-        write_summary(tasks, run_as="lanes")
+        write_summary(tasks, run_as="benches")
 
         # When the task set is validated
         result = validate(tasks)
@@ -146,13 +146,13 @@ class TestRunAs:
         assert result.returncode == INVALID
         assert "should say serially" in result.stdout
 
-    def test_accepts_lanes_with_one_task_that_runs_alone(self, tmp_path: Path) -> None:
+    def test_accepts_benches_with_one_task_that_runs_alone(self, tmp_path: Path) -> None:
         """A migration or lockfile change can run alone inside a set that otherwise parallelizes."""
-        # Given a lanes set with one task that runs alone
+        # Given a benches set with one task that runs alone
         tasks = tmp_path / "tasks"
         write_task(tasks, "ingestion-001", parallel="false")
         write_task(tasks, "ingestion-002")
-        write_summary(tasks, run_as="lanes")
+        write_summary(tasks, run_as="benches")
 
         # When the task set is validated
         result = validate(tasks)
@@ -164,7 +164,7 @@ class TestRunAs:
         # Given a summary whose Run as is still the template's choice
         tasks = tmp_path / "tasks"
         write_task(tasks, "ingestion-001")
-        write_summary(tasks, run_as="lanes | serially")
+        write_summary(tasks, run_as="benches | serially")
 
         # When the task set is validated
         result = validate(tasks)
@@ -203,7 +203,7 @@ class TestValidTaskSets:
 
 
 class TestRejectedTaskSets:
-    """Each case here would stall one or more lanes if it reached a developer."""
+    """Each case here would stall one or more benches if it reached a developer."""
 
     def test_rejects_a_dependency_that_does_not_exist(self, tmp_path: Path) -> None:
         # Given a dependency on a task that does not exist
@@ -274,7 +274,7 @@ class TestRejectedTaskSets:
         assert result.returncode == VALID, result.stdout
 
     def test_rejects_an_unknown_type(self, tmp_path: Path) -> None:
-        """The type prefixes the lane's commit, so a typo reaches the history."""
+        """The type prefixes the bench's commit, so a typo reaches the history."""
         # Given a task with a type that is not conventional
         tasks = tmp_path / "tasks"
         write_task(tasks, "ingestion-001", task_type="feature")
@@ -415,7 +415,7 @@ class TestDecompositionSummary:
         assert "no decomposition summary" in result.stdout
 
     def test_rejects_a_task_missing_from_the_summary(self, tmp_path: Path) -> None:
-        """A launcher would run it anyway, so nobody approved that lane."""
+        """A launcher would run it anyway, so nobody approved that bench."""
         # Given a summary that omits one task
         tasks = tmp_path / "tasks"
         write_task(tasks, "ingestion-001")
@@ -430,7 +430,7 @@ class TestDecompositionSummary:
         assert "ingestion-002\tmissing from decomposition.md" in result.stdout
 
     def test_rejects_a_summary_listing_a_task_with_no_file(self, tmp_path: Path) -> None:
-        """The lane can never start: there is nothing to launch it from."""
+        """The bench can never start: there is nothing to launch it from."""
         # Given a summary listing a task with no file
         tasks = tmp_path / "tasks"
         write_task(tasks, "ingestion-001")
@@ -470,7 +470,7 @@ class TestDecompositionSummary:
             "# Decomposition: test\n\n"
             "## Epics\n\n### ingestion\n\nWhat it delivers.\n\n"
             "- `ingestion-001` - Do ingestion-001\n\n"
-            "## Parallelism\n\n**Run as:** lanes\n\n"
+            "## Parallelism\n\n**Run as:** benches\n\n"
             "## Critical path\n\n- `ingestion-404` - not a declaration\n",
             encoding="utf-8",
         )
@@ -779,8 +779,8 @@ class TestMilestones:
         assert result.returncode == INVALID
 
     def test_run_as_describes_the_current_milestone_only(self, tmp_path: Path) -> None:
-        """A closed milestone that ran in lanes does not stop the next from running serially."""
-        # Given a closed milestone in lanes, and a serial current one
+        """A closed milestone that ran in benches does not stop the next from running serially."""
+        # Given a closed milestone in benches, and a serial current one
         tasks = tmp_path / "tasks"
         write_prd(tasks)
         write_task(tasks, "server-001", epic="server", covers="- A1")

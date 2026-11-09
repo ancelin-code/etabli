@@ -4,10 +4,10 @@
 [project]
 name = "etabli"
 version = "0.1.0"
-description = "Établi: Agent Skills that take a project from requirements to parallel lanes to draft pull requests"
+description = "Établi: Agent Skills that take a project from requirements to parallel benches to draft pull requests"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.13,<3.14"
 readme = "README.md"
 authors = [
     { name = "Ancelin Serre" },
@@ -16,13 +16,13 @@ keywords = []
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 # -----------------------------------------------
 # Dependencies management
 # -----------------------------------------------
-# Every checker below is a public PyPI package: the kit needs no private index.
+# Every checker below is a public PyPI package: Établi needs no private index.
 [dependency-groups]
 lint = [
     "cisco-ai-skill-scanner>=2.0.9,<3.0",
@@ -82,6 +82,8 @@ disable = [
 ]
 
 [tool.rumdl.per-file-ignores]
+# Opens with a centred logo and title in HTML, as the sibling project does.
+"README.md" = ["MD041"]
 # A section appended to a project's AGENTS.md, not a document of its own.
 ".agents/skills/etabli-orchestrator/assets/agents-routing.md" = ["MD041"]
 # GitHub shows this as the pre-filled description, which has no title.

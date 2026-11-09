@@ -5,13 +5,13 @@
 
 ## Context
 
-The kit's phases communicate through files: each one ends by writing an
+Établi's phases communicate through files: each one ends by writing an
 artifact, and the next starts from it in a fresh session, so no long-lived
 session has to carry state. Decomposition was the exception. It wrote
 `tasks/<id>.md` and then *reported* the epics, what could run in parallel and
 the critical path into the session that produced them.
 
-That made the epic a concept with no artifact anywhere in the kit. It survived
+That made the epic a concept with no artifact anywhere in Établi. It survived
 only as an id prefix (`<epic>-<nnn>`), a frontmatter field, and a cap of ten
 tasks. The grouping itself - which tasks form a slice, and what that slice is
 responsible for delivering - existed in one session's reasoning and was gone
@@ -22,7 +22,7 @@ gate was handed a directory of loose task files and a verbal summary that no
 later phase could read, which is the hardest form in which to judge whether a
 cut is sane. And while "is this epic finished" is derivable from git, "does
 this epic deliver what it was grouped to deliver" had nowhere to be written,
-even though integration is exactly where parallel lanes fail.
+even though integration is exactly where parallel benches fail.
 
 ## Decision
 
@@ -37,7 +37,7 @@ files in both directions: a declared task must have a file carrying the same
 epic, and every task file must appear in the summary.
 
 The epic stays a grouping rather than becoming an artifact of its own. Nothing
-in the kit gains an `epics/` directory.
+in Établi gains an `epics/` directory.
 
 ## Alternatives considered
 
@@ -51,7 +51,7 @@ in the kit gains an `epics/` directory.
   puts a decomposition concern into a stage-A document a human already
   approved, so every re-cut reopens an approved artifact and blurs which gate
   covers what.
-- **Leaving it as a session report** - what the kit did. Rejected because
+- **Leaving it as a session report** - what Établi did. Rejected because
   decomposition was the only phase not writing its output, and what it reported
   is precisely what the approval gate needs to read.
 - **Deriving the summary from the task files at read time** - attractive,
@@ -62,7 +62,7 @@ in the kit gains an `epics/` directory.
 
 ## Consequences
 
-Every phase now ends by writing a file, so the rule the kit states about itself
+Every phase now ends by writing a file, so the rule Établi states about itself
 is true without exception. The approval gate has one reviewable artifact
 instead of a directory listing, and a fresh session in any later phase can
 recover why the work was cut the way it was.
@@ -80,4 +80,4 @@ restricted to what a script can verify, which would exclude everything the
 artifact exists to carry.
 
 Requiring the file makes it non-optional in practice: a task set without one
-fails validation, so no lane starts from a cut nobody wrote down.
+fails validation, so no bench starts from a cut nobody wrote down.

@@ -1,13 +1,13 @@
-"""Read the tiers out of the delivery conventions.
+"""Read the tiers out of the Établi conventions.
 
 The conventions are the single place a tier's meaning is written down. Two
 scripts must nevertheless agree with it in code: ``validate-tasks.sh`` accepts
-or rejects a tier, and ``launch-lanes.sh`` knows which ones it may route.
+or rejects a tier, and ``launch-benches.sh`` knows which ones it may route.
 Neither can read prose, so the copies are unavoidable.
 
 Parsing the tables here makes them checkable instead. A tier added to the
 conventions and to only one of the scripts now fails a test, rather than
-surfacing when a lane refuses to start.
+surfacing when a bench refuses to start.
 """
 
 from __future__ import annotations
@@ -16,12 +16,7 @@ import re
 from pathlib import Path
 
 CONVENTIONS = (
-    Path(__file__).resolve().parents[2]
-    / ".agents"
-    / "skills"
-    / "etabli-orchestrator"
-    / "references"
-    / "conventions.md"
+    Path(__file__).resolve().parents[2] / ".agents" / "skills" / "etabli-orchestrator" / "references" / "conventions.md"
 )
 
 _ROW = re.compile(r"^\|\s*(?P<first>[^|]+?)\s*\|")

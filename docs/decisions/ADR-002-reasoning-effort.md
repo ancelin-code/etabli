@@ -5,12 +5,12 @@
 
 ## Context
 
-Every lane runs at a pinned reasoning effort, because an unset effort lets each
-harness apply its own default and two lanes on the same tier then think for
+Every bench runs at a pinned reasoning effort, because an unset effort lets each
+harness apply its own default and two benches on the same tier then think for
 different lengths of time, for no stated reason.
 
 The value has to come from somewhere. The task file already carries a `tier`
-that says how much capability the lane needs, so the question is whether effort belongs beside it
+that says how much capability the bench needs, so the question is whether effort belongs beside it
 or belongs to the launch.
 
 The case for the launch is that effort looks like a restatement of the tier:
@@ -39,12 +39,12 @@ cannot validate and then fail at launch on one side only.
 ## Alternatives considered
 
 - **A batch flag only, with no task field** - Rejected. It forces one effort on
-  every lane in a launch, and the designed path pipes every ready task into one
+  every bench in a launch, and the designed path pipes every ready task into one
   launch. Raising the effort of a single task would mean launching it on its
   own, which breaks that composition. The result is that nobody changes the
   effort, or they edit the script, which then applies to every later run.
 - **Leaving effort unset and taking each harness default** - Rejected. This is
-  what the kit did while the conventions claimed execution ran at medium. The
+  what Établi did while the conventions claimed execution ran at medium. The
   claim was false and nothing surfaced it.
 - **Deriving effort from the tier** - Rejected. It is the assumption the
   frontend example breaks: the same tier legitimately wants different amounts of

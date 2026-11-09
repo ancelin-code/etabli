@@ -1,4 +1,4 @@
-# Install the Kit
+# Install Établi
 
 The six skills are one workflow, not a catalogue you pick from. Each phase
 consumes the file the previous phase wrote, so a single skill installed alone
@@ -15,7 +15,7 @@ them.
 
 !!! warning "GitHub only, for now"
 
-    `gh` talks to GitHub, so the kit works with GitHub repositories only. The
+    `gh` talks to GitHub, so Établi works with GitHub repositories only. The
     claims are plain git and would work anywhere; the status, snapshot and
     publishing helpers are what ask `gh`. Support for other forges is planned
     for a later version. See
@@ -47,8 +47,8 @@ machine where it detects no agent installed, it also writes a copy under
 `agent/`, which a repository does not need and you can delete.
 
 Then commit what the CLI produced, including `skills-lock.json` and the
-symlinks. Git stores symlinks natively, so **lanes running in worktrees get the
-kit without a second install**. Everyone else restores the pinned versions
+symlinks. Git stores symlinks natively, so **benches running in worktrees get the
+Établi without a second install**. Everyone else restores the pinned versions
 with:
 
 ```sh
@@ -60,15 +60,15 @@ npx skills experimental_install
     With `-a claude-code` alone, the CLI copies each skill into
     `.claude/skills/` and creates no `.agents/`. A later `npx skills update`
     then moves the skills it updates to `.agents/skills/` with links, and
-    leaves the ones it finds up to date as copies. The kit's skills find each
+    leaves the ones it finds up to date as copies. Établi's skills find each
     other as siblings, so that split install loses `etabli-implement`, and
-    lanes would run without it. `where.sh` reports it as
+    benches would run without it. `where.sh` reports it as
     `NEXT repair-install`, and the launcher refuses to start; see
     [Repair a split install](#repair-a-split-install).
 
 ## Make the orchestrator the default assistant
 
-Then make the kit the project's default assistant, and commit `AGENTS.md`:
+Then make Établi the project's default assistant, and commit `AGENTS.md`:
 
 ```sh
 sh .agents/skills/etabli-orchestrator/scripts/install-routing.sh
@@ -76,13 +76,13 @@ sh .agents/skills/etabli-orchestrator/scripts/install-routing.sh
 
 It appends a short block to `AGENTS.md`, creating it if needed, that sends
 every request about the project to `etabli-orchestrator`. Claude Code and
-Copilot CLI both read that file on every request, so the kit is consulted even
+Copilot CLI both read that file on every request, so Établi is consulted even
 when a question matches no skill description. Without it, a plain *"what's the
-status of this project?"* reached no kit skill in either harness, and Copilot
+status of this project?"* reached no Établi skill in either harness, and Copilot
 answered from git alone, recommending a task already merged. The orchestrator
 runs the same step itself the first time it finds the block missing.
 
-The script also writes a starter `delivery/review-lenses.conf`. It only matters
+The script also writes a starter `specs/review-lenses.conf`. It only matters
 when you review pull requests; leave it as it is for now, and see
 [Review the Pull Requests](../guides/review.md) when you want it.
 

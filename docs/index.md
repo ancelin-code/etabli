@@ -1,16 +1,16 @@
 # Établi
 
-**Agent Skills for AI-native delivery.** *Établi* is French for *workbench*.
+**Craft software with AI agents, from spec to pull request.** *Établi* is French for *workbench*.
 
 Établi takes a project from an intent to merged pull requests: requirements
-and a design spine, decomposition into tasks, parallel implementation lanes,
+and a design spine, decomposition into tasks, parallel implementation benches,
 review. Each phase writes a file the next one reads, and a person approves it
-before the route goes on. Git is the only state: no server, no database, no
+before the workflow goes on. Git is the only state: no server, no database, no
 status file.
 
 !!! note "Status: early"
 
-    The kit is used on real projects, and `v0.1.0` is its first release.
+    Établi is used on real projects, and `v0.1.0` is its first release.
     Conventions may still change between versions. Install a release tag, read
     the [Changelog](changelog.md) before updating, and expect breaking changes
     to be called out there rather than migrated.
@@ -22,17 +22,17 @@ status file.
 - **Teams** that share one task set: several people pick tasks from it, and a
   claim made in git says who holds which.
 - Anyone on **Claude Code, GitHub Copilot CLI, Codex CLI, OpenCode or Pi**.
-  The skills hold no harness-specific tool names, and the lane launcher has an
+  The skills hold no harness-specific tool names, and the bench launcher has an
   adapter for each, plus a custom command for any other.
 
 ## What version 0.1.0 does
 
 - Six skills that are one workflow: `etabli-orchestrator` routes every request,
   `etabli-spec` writes requirements and contracts, `etabli-decompose` cuts them
-  into tasks, `etabli-status` claims tasks, and each lane runs
+  into tasks, `etabli-status` claims tasks, and each bench runs
   `etabli-implement` then `etabli-refine`. See [The Six Skills](concepts/skills.md).
-- Up to three **lanes** at once, each in its own git worktree, each ending as a
-  draft pull request. See [Lanes](concepts/lanes.md).
+- Up to three **benches** at once, each in its own git worktree, each ending as a
+  draft pull request. See [Benches](concepts/benches.md).
 - **Tiers** instead of model names: a task says how much capability it needs,
   and your own mapping says which model that means. See
   [Choose Models with Tiers](guides/tiers.md).
@@ -45,13 +45,13 @@ status file.
 
 ## Where to start
 
-1. [Install the Kit](start/install.md): add the six skills to a repository and
+1. [Install Établi](start/install.md): add the six skills to a repository and
    make the orchestrator its default assistant.
-2. [Drive the Route](start/route.md): ask for what you want built, approve each
-   phase, and let the lanes run.
-3. [Watch and Resume Lanes](start/lanes.md): see what a lane is doing, stop it,
+2. [Drive the Workflow](start/workflow.md): ask for what you want built, approve each
+   phase, and let the benches run.
+3. [Watch and Resume Benches](start/benches.md): see what a bench is doing, stop it,
    or pick it back up by hand.
-4. [The Route](concepts/route.md): how the phases, the gates and the files fit
+4. [The Workflow](concepts/workflow.md): how the phases, the gates and the files fit
    together.
 
 Établi is open source under the Apache-2.0 licence; its code is on
