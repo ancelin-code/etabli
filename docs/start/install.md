@@ -32,10 +32,10 @@ Use the `skills` CLI. It installs all six skills, writes each one to
 `skills-lock.json` so every developer restores the same version.
 
 ```sh
-npx skills add https://github.com/ancelin-code/etabli/tree/v0.1.0 --skill '*' -y
+npx skills add https://github.com/ancelin-code/etabli/tree/v0.2.0 --skill '*' -y
 ```
 
-Naming a release tag, here `v0.1.0`, pins the install to it: the lock file
+Naming a release tag, here `v0.2.0`, pins the install to it: the lock file
 records that version, and the [Changelog](../changelog.md) lists what each
 release changed. Replace the tag with the release you want, or install what has
 been released to `main` with `/tree/main`. Without a `/tree/…` suffix you get
@@ -104,7 +104,7 @@ To repair a split install, remove every copy and install again:
 
 ```sh
 rm -rf .claude/skills/etabli-* .agents/skills/etabli-*
-npx skills add https://github.com/ancelin-code/etabli/tree/v0.1.0 --skill '*' -y
+npx skills add https://github.com/ancelin-code/etabli/tree/v0.2.0 --skill '*' -y
 ```
 
 Re-running `npx skills add` with `-a claude-code` alone is not a repair: it

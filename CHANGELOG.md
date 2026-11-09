@@ -6,10 +6,13 @@ tagging it.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-09
+
 ### Breaking: Établi's own vocabulary
 
 The names now follow the workbench: a **bench** is where a worker does one
-task, and `specs/` holds the specifications of the project.
+task, and `specs/` holds the specifications of the project. The tagline is now
+"Craft software with AI agents, from spec to pull request."
 
 | Before | Now |
 | --- | --- |
@@ -23,6 +26,9 @@ To migrate a project, run `git mv delivery specs`, rename any `DELIVERY_*`
 variable you export, and delete the old `.lanes/` directory and lane
 worktrees. Task branches (`task/<id>`) and claims are unchanged, so work in
 flight keeps its claims.
+
+The project moves to Python 3.13, aligned with Tiroir, and the README follows
+Tiroir's layout.
 
 - A documentation site, <https://ancelin-code.github.io/etabli/>, built with
   Zensical and published from `develop`. The guides move there from the
