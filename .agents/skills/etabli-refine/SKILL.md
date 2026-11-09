@@ -11,7 +11,7 @@ description: >-
 license: Apache-2.0
 repository: https://github.com/ancelin-code/etabli.git
 product-version: etabli@v0
-version: "0.1.0"
+version: "0.2.0"
 keywords:
   - review
   - simplify

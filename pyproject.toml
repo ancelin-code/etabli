@@ -3,7 +3,7 @@
 # -----------------------------------------------
 [project]
 name = "etabli"
-version = "0.1.0"
+version = "0.2.0"
 description = "Établi: Agent Skills that take a project from requirements to parallel benches to draft pull requests"
 license = "Apache-2.0"
 license-files = ["LICENSE"]

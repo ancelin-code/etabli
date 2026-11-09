@@ -51,7 +51,7 @@ Each machine needs `git`, a POSIX `sh`, and an authenticated `gh` 2.0 or later.
 In the repository that holds the project's plan:
 
 ```sh
-npx skills add https://github.com/ancelin-code/etabli/tree/v0.1.0 --skill '*' -y
+npx skills add https://github.com/ancelin-code/etabli/tree/v0.2.0 --skill '*' -y
 sh .agents/skills/etabli-orchestrator/scripts/install-routing.sh
 ```
 

@@ -10,7 +10,7 @@ status file.
 
 !!! note "Status: early"
 
-    Établi is used on real projects, and `v0.1.0` is its first release.
+    Établi is used on real projects.
     Conventions may still change between versions. Install a release tag, read
     the [Changelog](changelog.md) before updating, and expect breaking changes
     to be called out there rather than migrated.
@@ -25,7 +25,7 @@ status file.
   The skills hold no harness-specific tool names, and the bench launcher has an
   adapter for each, plus a custom command for any other.
 
-## What version 0.1.0 does
+## What version 0.2.0 does
 
 - Six skills that are one workflow: `etabli-orchestrator` routes every request,
   `etabli-spec` writes requirements and contracts, `etabli-decompose` cuts them
