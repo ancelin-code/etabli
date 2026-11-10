@@ -29,8 +29,7 @@ Options:
   --no-launch            Report only; never start a bench.
   --exit-on-human        Exit as soon as a bench ends (PUBLISHED or BENCH-FAILED),
                          so the end of the command is the notification. Run it
-                         again after telling the user; outcomes already
-                         announced this way do not stop the next run.
+                         again after telling the user.
   --max-polls <n>        Stop after n polls (default: no limit).
   --log-dir <dir>        Bench logs (default: .logs inside the worktree root, where
                          the launcher puts them, including a --worktree-root
@@ -38,6 +37,9 @@ Options:
   --status-script <path> status.sh from etabli-status (default: beside this skill).
   --launcher <path>      launch-benches.sh (default: beside this script).
   -h, --help             Print this help.
+
+A bench's outcome is announced once, whichever run saw it: a restart replays
+nothing. What was announced is kept in <log-dir>/announced.
 
 Events, tab-separated, one per line:
   LAUNCHED     <id> ...            a bench started, as the launcher prints it
@@ -206,15 +208,19 @@ EOF_ROWS
       IFS="$tab" read -r what _ url <<EOF_END
 $end
 EOF_END
+      [ "$what" != PUBLISHED ] || put published "$id" 1
+      # The log outlives this run, so what any run already announced is kept
+      # beside it; otherwise a restart would replay every outcome, failures
+      # long since handled included, as if it were new.
+      key="$id$tab$end"
+      ! grep -Fxq -- "$key" "$log_dir/announced" 2>/dev/null || continue
+      printf '%s\n' "$key" >>"$log_dir/announced"
       if [ "$what" = PUBLISHED ]; then
-        put published "$id" 1
         event PUBLISHED "$id" "$url"
       else
         event BENCH-FAILED "$id" "$end"
       fi
-      # The log outlives this run, so what a previous run already announced is
-      # kept beside it; otherwise every restart would stop on the same bench.
-      [ "$exit_on_human" -eq 0 ] || grep -Fxq -- "$end" "$log_dir/announced" 2>/dev/null || add human "$end"
+      [ "$exit_on_human" -eq 0 ] || add human "$end"
     done
     for id in $(items in_flight); do
       if [ "$(get now "$id")" = in-review ] || has published "$id"; then add review "$id"; fi
@@ -282,10 +288,7 @@ EOF_LAUNCHED
       event STUCK "$(words blocked)"
       exit 3
     fi
-    if [ "$(count human)" -gt 0 ]; then
-      items human >>"$log_dir/announced"
-      exit 4
-    fi
+    [ "$(count human)" -eq 0 ] || exit 4
 
     if [ $(($(date +%s) - last_summary)) -ge "$summary_every" ]; then
       last_summary=$(date +%s)

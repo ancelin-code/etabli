@@ -270,6 +270,40 @@ class TestBenchOutcomes:
         # Then the pull request is announced once
         assert events(result.stdout).count(["PUBLISHED", "a-001", "https://example.test/pr/4"]) == 1
 
+    def test_a_restart_replays_no_outcome(self, tmp_path: Path) -> None:
+        """A failure fixed by hand since must not come back as new on the next run."""
+        # Given one run that announced a published bench and a failed one
+        repo = repo_with(tmp_path, {"a-001": "", "a-002": ""})
+        logs = repo.parent / "benches" / repo.name / ".logs"
+        logs.mkdir(parents=True)
+        (logs / "a-001.log").write_text("PUBLISHED\ta-001\thttps://example.test/pr/4\n", encoding="utf-8")
+        (logs / "a-002.log").write_text("ERROR\tgh pr create failed\n", encoding="utf-8")
+        status = scripted_status(tmp_path, [{"a-001": "in-progress", "a-002": "in-progress"}])
+        first = follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1")
+
+        # When the loop is run again
+        second = follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1")
+
+        # Then only the first run announced them
+        assert [e[0] for e in events(first.stdout)] == ["PUBLISHED", "BENCH-FAILED"]
+        assert events(second.stdout) == []
+
+    def test_a_new_outcome_in_a_relaunched_bench_is_announced(self, tmp_path: Path) -> None:
+        # Given a failure announced by one run, then the bench relaunched and published
+        repo = repo_with(tmp_path, {"a-001": ""})
+        logs = repo.parent / "benches" / repo.name / ".logs"
+        logs.mkdir(parents=True)
+        (logs / "a-001.log").write_text("ERROR\tgh pr create failed\n", encoding="utf-8")
+        status = scripted_status(tmp_path, [{"a-001": "in-progress"}])
+        follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1")
+        (logs / "a-001.log").write_text("PUBLISHED\ta-001\thttps://example.test/pr/4\n", encoding="utf-8")
+
+        # When the loop is run again
+        result = follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1")
+
+        # Then the new outcome is announced
+        assert events(result.stdout) == [["PUBLISHED", "a-001", "https://example.test/pr/4"]]
+
     def test_a_bench_that_ended_without_a_pull_request_is_reported(self, tmp_path: Path) -> None:
         # Given a bench log that ended with the bench kept
         repo = repo_with(tmp_path, {"a-001": ""})
