@@ -297,6 +297,25 @@ class TestBenchOutcomes:
         assert result.returncode == 1
         assert [e[0] for e in events(result.stdout)] == ["ERROR"] * 5
 
+    def test_an_unreadable_state_says_why(self, tmp_path: Path) -> None:
+        """A proxy timeout and an expired login need different fixes; the event must tell them apart."""
+        # Given a status script that fails with a reason
+        repo = repo_with(tmp_path, {"a-001": ""})
+        broken = tmp_path / "status.sh"
+        broken.write_text(
+            "printf 'ERROR\\tgh could not list pull requests in a: i/o timeout\\n' >&2\nprintf 'more\\n' >&2\nexit 1\n",
+            encoding="utf-8",
+        )
+
+        # When the loop polls once
+        result = follow(repo, broken, recording_launcher(tmp_path), "--max-polls", "1")
+
+        # Then the error carries the first line of the reason
+        assert events(result.stdout)[0] == [
+            "ERROR",
+            "task state could not be read (attempt 1): gh could not list pull requests in a: i/o timeout",
+        ]
+
 
 class TestExitOnHuman:
     """With --exit-on-human the end of the command is the notification."""

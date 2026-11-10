@@ -52,7 +52,7 @@ Events, tab-separated, one per line:
                                    starts the next milestone
   COMPLETE                         every task is merged, and every milestone closed
   STUCK        <ids>               blocked, with nothing in flight to unblock them
-  ERROR        <message>           task state could not be read; retried
+  ERROR        <message>           task state could not be read, and why; retried
 
 Exit codes:
   0  every task is merged, a milestone boundary was reached, or --max-polls
@@ -160,9 +160,11 @@ last_summary=$(date +%s)
 
 while :; do
   polls=$((polls + 1))
-  if ! rows="$(sh "$status_script" 2>/dev/null)"; then
+  if ! rows="$(sh "$status_script" 2>"$store/status.err")"; then
     failures=$((failures + 1))
-    event ERROR "task state could not be read (attempt $failures)"
+    # The status script's first line of complaint says why, minus its own prefix.
+    why="$(head -n 1 "$store/status.err" | sed "s/^ERROR$tab//")"
+    event ERROR "task state could not be read (attempt $failures)${why:+: $why}"
     [ "$failures" -lt 5 ] || exit 1
   else
     failures=0

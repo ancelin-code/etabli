@@ -622,15 +622,18 @@ class TestDerivedStatus:
         write_task(dev, "ingestion-001")
         bin_dir = tmp_path / "failing-gh"
         bin_dir.mkdir()
-        (bin_dir / "gh").write_text("#!/usr/bin/env bash\nexit 1\n", encoding="utf-8")
+        (bin_dir / "gh").write_text(
+            "#!/usr/bin/env bash\necho 'proxyconnect tcp: i/o timeout' >&2\nexit 1\n", encoding="utf-8"
+        )
         (bin_dir / "gh").chmod(0o755)
 
         # When status is read
         result = run_status(["--no-fetch"], cwd=dev, bin_dir=bin_dir)
 
-        # Then it dies without printing any task
+        # Then it dies with gh's reason, without printing any task
         assert result.returncode == CLAIM_ERROR
         assert "gh could not list pull requests" in result.stderr
+        assert "proxyconnect tcp: i/o timeout" in result.stderr
         assert "TASK" not in result.stdout
 
     def test_dies_without_a_tasks_directory(self, tmp_path: Path, origin: Path) -> None:

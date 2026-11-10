@@ -132,10 +132,10 @@ $repos
 EOF_REPOS
 
 # Pull request heads for one query in one repository. A failed query is fatal: an
-# empty answer would read as "nothing merged".
+# empty answer would read as "nothing merged". gh's own first line says why.
 pr_heads() {
-  (cd "$1" && shift && gh pr list "$@" 2>/dev/null) ||
-    die "gh could not list pull requests in $(basename "$1"); check 'gh auth status' and the remote"
+  (cd "$1" && shift && gh pr list "$@" 2>"$store/gh.err") ||
+    die "gh could not list pull requests in $(basename "$1"): $(head -n 1 "$store/gh.err"); check 'gh auth status' and the remote"
 }
 
 # Only a task that lands in the repository answering counts: a task/<id> branch
