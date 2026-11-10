@@ -40,7 +40,8 @@ def scripted_status(tmp_path: Path, polls: list[dict[str, str]], milestones: str
     script = tmp_path / "status.sh"
     script.write_text(
         f'n=$(( $(cat "{folder}/count" 2>/dev/null || echo 0) + 1 )); echo "$n" > "{folder}/count"\n'
-        f'last=$(ls "{folder}"/*.tsv | wc -l); [ "$n" -le "$last" ] || n=$last\n'
+        # macOS pads wc's count with spaces, which would then name no file.
+        f'last=$(ls "{folder}"/*.tsv | wc -l | tr -d " "); [ "$n" -le "$last" ] || n=$last\n'
         f'cat "{folder}/$n.tsv"\n',
         encoding="utf-8",
     )
