@@ -400,8 +400,8 @@ def fake_gh(
     merged_long_ago holds tasks past the bulk query's window: gh only returns
     them to a query naming their branch with --head.
 
-    open_prs carries (task-id, is_draft), because draft is the whole distinction
-    between a bench still working and a task handed to a reviewer.
+    open_prs carries (task-id, is_draft). Any open pull request answers the open
+    query, since status.sh no longer filters drafts out.
 
     urls maps a task id to the pull request snapshot.sh asks for by branch.
     """
@@ -409,7 +409,7 @@ def fake_gh(
     bin_dir.mkdir(exist_ok=True)
     merged_out = "".join(f"task/{task_id}\n" for task_id in merged)
     every_merged = " ".join(f"task/{task_id}" for task_id in [*merged, *merged_long_ago])
-    open_out = "".join(f"task/{task_id}\n" for task_id, draft in open_prs if not draft)
+    open_out = "".join(f"task/{task_id}\n" for task_id, _draft in open_prs)
     url_cases = "".join(f"    task/{task_id}) printf '%s\\n' {shlex.quote(url)} ;;\n" for task_id, url in urls.items())
     stub = bin_dir / "gh"
     stub.write_text(
@@ -550,12 +550,8 @@ class TestDerivedStatus:
         # Then it is in review
         assert rows["ingestion-001"][1] == "in-review"
 
-    def test_a_draft_pull_request_is_still_in_progress(self, tmp_path: Path, origin: Path) -> None:
-        """A bench drafts its pull request the moment it opens one.
-
-        Counting a draft as in review would report every running bench as waiting
-        on a reviewer, which is the opposite of the truth.
-        """
+    def test_a_draft_pull_request_is_in_review(self, tmp_path: Path, origin: Path) -> None:
+        """A bench opens its draft only once its sessions end, so the draft waits on a person."""
         # Given a claimed task with a draft pull request
         dev = developer(tmp_path, origin, "devA")
         write_task(dev, "ingestion-001")
@@ -565,8 +561,8 @@ class TestDerivedStatus:
         # When status is read
         rows = task_rows(run_status(["--no-fetch"], cwd=dev, bin_dir=bin_dir).stdout)
 
-        # Then it is in progress
-        assert rows["ingestion-001"][1] == "in-progress"
+        # Then it is in review
+        assert rows["ingestion-001"][1] == "in-review"
 
     def test_a_merged_task_outranks_its_open_pull_request(self, tmp_path: Path, origin: Path) -> None:
         """Stale open pull requests exist; merged is the end state."""

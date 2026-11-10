@@ -90,7 +90,7 @@ answer, because the answer lives in the refs.
 | State | How it is derived |
 |---|---|
 | In progress | the remote branch `task/<id>` exists |
-| In review | the task's pull request is open and no longer a draft |
+| In review | the task's pull request is open, draft or not |
 | Done | the task's pull request is merged |
 | Ready | every `depends_on` entry is done and no branch exists yet |
 | Blocked | some `depends_on` entry is not done |
@@ -99,9 +99,8 @@ Narrow the output with `--ready`, `--blocked`, `--in-progress` or `--in-review`.
 Use `--ready` to answer "what can I pick up", which is the question that precedes
 a claim, and `--in-review` for what is waiting on a person rather than on a bench.
 
-A bench opens its pull request as a draft and leaves it drafted while it works,
-so in review is reached by marking it ready for review. Nothing a bench does on
-its own moves a task out of in progress.
+A bench opens its draft pull request only once its sessions have ended, so a
+draft is already waiting on a person: its review, then marking it ready.
 
 When `specs/decomposition.md` plans milestones, the output also carries one
 `MILESTONE` row per milestone, in plan order: its slug, its state (`closed`,

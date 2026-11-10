@@ -284,6 +284,32 @@ class TestBenchOutcomes:
         # Then the bench is reported as failed
         assert events(result.stdout)[0][:2] == ["BENCH-FAILED", "a-001"]
 
+    def test_a_pull_request_from_elsewhere_is_announced_in_review(self, tmp_path: Path) -> None:
+        # Given a task that goes in review with no bench log on this machine
+        repo = repo_with(tmp_path, {"a-001": ""})
+        status = scripted_status(tmp_path, [{"a-001": "in-progress"}, {"a-001": "in-review"}])
+
+        # When the loop polls twice
+        result = follow(repo, status, recording_launcher(tmp_path), "--max-polls", "2", "--interval", "0")
+
+        # Then it is announced in review
+        assert ["IN-REVIEW", "a-001"] in events(result.stdout)
+
+    def test_a_bench_run_here_is_announced_by_its_log_only(self, tmp_path: Path) -> None:
+        """Its draft makes the task in review, and PUBLISHED already said so."""
+        # Given a bench log that published, and the task going in review
+        repo = repo_with(tmp_path, {"a-001": ""})
+        logs = repo.parent / "benches" / repo.name / ".logs"
+        logs.mkdir(parents=True)
+        (logs / "a-001.log").write_text("PUBLISHED\ta-001\thttps://example.test/pr/4\n", encoding="utf-8")
+        status = scripted_status(tmp_path, [{"a-001": "in-progress"}, {"a-001": "in-review"}])
+
+        # When the loop polls twice
+        result = follow(repo, status, recording_launcher(tmp_path), "--max-polls", "2", "--interval", "0")
+
+        # Then only PUBLISHED is announced
+        assert [e[0] for e in events(result.stdout)] == ["PUBLISHED"]
+
     def test_unreadable_state_is_retried_then_given_up(self, tmp_path: Path) -> None:
         # Given a status script that always fails
         repo = repo_with(tmp_path, {"a-001": ""})
