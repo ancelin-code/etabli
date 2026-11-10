@@ -6,6 +6,12 @@ tagging it.
 
 ## [Unreleased]
 
+### Fixed
+
+- A task delivered by a pull request from another branch no longer stays
+  ready, and no bench redoes it, once that pull request's body has a line
+  `Task: specs/tasks/<id>.md`. One line may name several tasks.
+
 ## [0.2.0] - 2026-11-09
 
 ### Breaking: Établi's own vocabulary

@@ -91,7 +91,7 @@ answer, because the answer lives in the refs.
 |---|---|
 | In progress | the remote branch `task/<id>` exists |
 | In review | the task's pull request is open and no longer a draft |
-| Done | the task's pull request is merged |
+| Done | the task's pull request is merged, or a merged pull request's body has a line `Task: specs/tasks/<id>.md` |
 | Ready | every `depends_on` entry is done and no branch exists yet |
 | Blocked | some `depends_on` entry is not done |
 
@@ -116,6 +116,11 @@ Reading pull request state needs `gh`, authenticated against the repository's
 forge. Branches are deleted on merge, so a merged pull request is the only
 record that a task is done. Without `gh`, or when it cannot list pull requests,
 the script exits 1 rather than report merged work as ready.
+
+Work merged from a branch other than `task/<id>` counts once its pull request
+body names the task on a `Task:` line, which may name several. Add the line to
+a pull request opened by hand. Only the 200 most recent merged pull requests
+are read this way.
 
 For a stand-up, the same data grouped for reading aloud:
 
