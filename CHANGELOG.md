@@ -6,6 +6,12 @@ tagging it.
 
 ## [Unreleased]
 
+### Fixed
+
+- `follow.sh`'s `ERROR` event now says why task state could not be read, and
+  `status.sh` passes on `gh`'s own first line when it cannot list pull
+  requests, such as a proxy timeout.
+
 ## [0.2.0] - 2026-11-09
 
 ### Breaking: Établi's own vocabulary
