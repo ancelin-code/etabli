@@ -6,6 +6,14 @@ tagging it.
 
 ## [Unreleased]
 
+### Fixed
+
+- `publish-bench.sh` retries a failed `gh` call after 5 and 15 seconds
+  (`ETABLI_GH_RETRY_DELAYS`), and warns about the `ai-assisted` label only when
+  the error is about the label. Once the branch is pushed, a lasting failure
+  prints `PUBLISH-FAILED` with the error and the command that re-runs it, and
+  `follow.sh` reports it as such rather than as `BENCH-FAILED`.
+
 ## [0.2.0] - 2026-11-09
 
 ### Breaking: Établi's own vocabulary

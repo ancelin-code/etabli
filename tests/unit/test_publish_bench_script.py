@@ -23,6 +23,7 @@ OK = 0
 USAGE_ERROR = 1
 NOTHING = 3
 URL = "https://example.test/pr/7"
+TRIES = 3  # the first try, then one per ETABLI_GH_RETRY_DELAYS entry
 
 pytestmark = pytest.mark.skipif(
     shutil.which("git") is None,
@@ -36,7 +37,16 @@ case "$1 $2" in
     [[ -n "${GH_EXISTING:-}" ]] || exit 1
     printf '%s %s\\n' "${GH_EXISTING_STATE:-OPEN}" "$GH_EXISTING" ;;
   "pr create")
-    if [[ -n "${GH_NO_LABEL:-}" && " $* " == *" --label "* ]]; then exit 1; fi
+    if [[ -n "${GH_NO_LABEL:-}" && " $* " == *" --label "* ]]; then
+      printf "could not add label: 'ai-assisted' not found\\n" >&2; exit 1
+    fi
+    # GH_FAILURES counts the creates that fail as a proxy timeout before one works.
+    if [[ -n "${GH_FAILURES:-}" ]]; then
+      done_so_far=$(grep -c '^pr create' "$GH_LOG")
+      if ((done_so_far <= GH_FAILURES)); then
+        printf 'Post "https://api.github.com/graphql": proxyconnect tcp: i/o timeout\\n' >&2; exit 1
+      fi
+    fi
     while (($# > 0)); do
       [[ "$1" == --body-file ]] && cp "$2" "$GH_BODY"
       shift
@@ -89,6 +99,7 @@ def publish(bench: Path, tmp_path: Path, **env_extra: str) -> subprocess.Complet
         GH_LOG=str(tmp_path / "gh.log"),
         GH_BODY=str(tmp_path / "body.md"),
         GH_URL=URL,
+        ETABLI_GH_RETRY_DELAYS="0 0",
         **env_extra,
     )
     (tmp_path / "gh.log").touch()
@@ -310,7 +321,42 @@ class TestPullRequest:
         # Then the pull request opens anyway, with a warning
         assert result.returncode == OK, result.stderr
         assert result.stdout == f"PUBLISHED\ta-001\t{URL}\n"
-        assert "ai-assisted label could not be applied" in result.stderr
+        assert "ai-assisted label could not be applied: could not add label" in result.stderr
+
+    def test_a_transient_gh_failure_is_retried(self, tmp_path: Path) -> None:
+        """A proxy timeout on a finished bench must not lose its pull request, or its label."""
+        # Given a gh whose first two creates time out
+        bench = claimed_bench(tmp_path)
+        (bench / "widget.py").write_text("print('widget')\n", encoding="utf-8")
+
+        # When a bench is published
+        result = publish(bench, tmp_path, GH_FAILURES="2")
+
+        # Then the third try opens it, labelled, and no label warning is given
+        assert result.returncode == OK, result.stderr
+        assert result.stdout == f"PUBLISHED\ta-001\t{URL}\n"
+        creates = [line for line in (tmp_path / "gh.log").read_text().splitlines() if line.startswith("pr create")]
+        assert len(creates) == TRIES
+        assert "--label ai-assisted" in creates[-1]
+        assert "label" not in result.stderr
+
+    def test_a_lasting_gh_failure_says_the_work_is_pushed_and_how_to_finish(self, tmp_path: Path) -> None:
+        """The bench succeeded; only the pull request is missing, and a re-run opens it."""
+        # Given a gh that times out on every create
+        bench = claimed_bench(tmp_path)
+        (bench / "widget.py").write_text("print('widget')\n", encoding="utf-8")
+
+        # When a bench is published
+        result = publish(bench, tmp_path, GH_FAILURES="9")
+
+        # Then the branch is pushed and the line names the error and the re-run
+        assert result.returncode == USAGE_ERROR
+        assert remote_subject(tmp_path) == "feat(a): do a-001"
+        what, task_id, error, rerun = result.stdout.rstrip("\n").split("\t")
+        assert (what, task_id) == ("PUBLISH-FAILED", "a-001")
+        assert "proxyconnect tcp: i/o timeout" in error
+        assert rerun == f"cd '{bench.resolve()}' && sh '{SCRIPT}' --report '.bench-report.md' 'specs/tasks/a-001.md'"
+        assert "label" not in result.stderr
 
     def test_refuses_to_run_off_the_task_branch(self, tmp_path: Path) -> None:
         # Given a bench switched to another branch

@@ -30,8 +30,13 @@ Options:
   -h, --help        Print this help.
 
 Prints one line, tab-separated:
-  PUBLISHED  <id>  <pull request url>
-  NOTHING    <id>  <reason>
+  PUBLISHED       <id>  <pull request url>
+  NOTHING         <id>  <reason>
+  PUBLISH-FAILED  <id>  <gh error>  <command that re-runs this>
+                  the branch is pushed, but no pull request could be opened
+
+A gh call that fails is tried again after 5 and 15 seconds;
+ETABLI_GH_RETRY_DELAYS sets those waits, for example "0 0".
 
 Exit codes:
   0  published, or the pull request already existed and was updated
@@ -40,9 +45,11 @@ Exit codes:
 USAGE
 }
 
+here="$(cd "$(dirname "$0")" && pwd -P)"
 report=".bench-report.md"
 remote="origin"
 task_file=""
+retry_delays="${ETABLI_GH_RETRY_DELAYS:-5 15}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -135,7 +142,15 @@ esac
 
 git push -q "$remote" "HEAD:refs/heads/$branch" || die "push of $branch failed"
 
-command -v gh >/dev/null 2>&1 || die "gh not found; $branch is pushed, open the pull request by hand"
+# From here the work is on the remote, so a failure is the pull request's alone:
+# say so, and how to finish, rather than report the bench as failed.
+publish_failed() {
+  printf 'PUBLISH-FAILED\t%s\t%s\t%s\n' "$task_id" "${1:-gh failed with no message}" \
+    "cd '$(pwd -P)' && sh '$here/publish-bench.sh' --report '$report' '$task_file'"
+  exit 1
+}
+
+command -v gh >/dev/null 2>&1 || publish_failed "gh not found"
 
 # The open pull request for the branch, if any. A closed one does not count: a
 # task released and relaunched after its pull request was closed needs a new one.
@@ -166,7 +181,8 @@ has_template() (
 )
 
 body="$(mktemp)"
-trap 'rm -f "$body"' EXIT
+err="$(mktemp)"
+trap 'rm -f "$body" "$err"' EXIT
 if [ -s "$report" ] && has_template; then
   # The bench wrote its report in the template's shape; it is the whole body.
   cp "$report" "$body"
@@ -192,14 +208,27 @@ fi
 create_pr() {
   gh pr create --draft --head "$branch" --title "$subject" --body-file "$body" "$@"
 }
-if ! url="$(create_pr --label ai-assisted 2>/dev/null)"; then
-  # Usually a repository without the label. The pull request matters more than
-  # the label, but the failed call may still have opened it, so look first
-  # rather than open a second one.
-  printf 'WARN\t%s\tthe ai-assisted label could not be applied\n' "$task_id" >&2
-  url="$(open_pr)" ||
-    url="$(create_pr)" ||
-    die "gh pr create failed; $branch is pushed, open the pull request by hand"
-fi
+
+# A flaky network fails gh as often as a real problem does, so a failed call is
+# tried again, and a failed call may still have opened the pull request: look
+# for it before each new try. Only an error about the label drops the label; the
+# pull request matters more.
+label=1
+tries=0
+url=""
+for delay in 0 $retry_delays; do
+  sleep "$delay"
+  tries=$((tries + 1))
+  if [ "$tries" -gt 1 ] && url="$(open_pr)"; then break; fi
+  if [ "$label" -eq 1 ]; then
+    if url="$(create_pr --label ai-assisted 2>"$err")"; then break; fi
+    if ! grep -qi label "$err"; then url=""; continue; fi
+    printf 'WARN\t%s\tthe ai-assisted label could not be applied: %s\n' "$task_id" "$(head -n 1 "$err")" >&2
+    label=0
+  fi
+  if url="$(create_pr 2>"$err")"; then break; fi
+  url=""
+done
+[ -n "$url" ] || publish_failed "$(head -n 1 "$err")"
 
 printf 'PUBLISHED\t%s\t%s\n' "$task_id" "$(printf '%s\n' "$url" | tail -n 1)"
