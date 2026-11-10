@@ -19,6 +19,8 @@ its worktree (`--log-dir` moves it).
 A bench's log prints `REFINE` when its second session starts, `PUBLISHED` with
 the pull request URL when it ends well, and `REFINE-FAILED` if the review
 session failed and the change was published as the first session left it.
+`PUBLISH-FAILED` means the work is pushed but `gh` could not open the pull
+request, even after retrying; the line ends with the command that opens it.
 
 ```sh
 benches=${ETABLI_WORKTREE_ROOT:-../benches/$(basename "$PWD")}

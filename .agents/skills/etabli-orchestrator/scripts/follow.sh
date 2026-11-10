@@ -27,7 +27,8 @@ Options:
   --summary-every <s>    Seconds between WAITING summaries (default: 300).
   --max-benches <n>        Benches running at once on this machine (default: 3).
   --no-launch            Report only; never start a bench.
-  --exit-on-human        Exit as soon as a bench ends (PUBLISHED or BENCH-FAILED),
+  --exit-on-human        Exit as soon as a bench ends (PUBLISHED, PUBLISH-FAILED or
+                         BENCH-FAILED),
                          so the end of the command is the notification. Run it
                          again after telling the user; outcomes already
                          announced this way do not stop the next run.
@@ -42,6 +43,8 @@ Options:
 Events, tab-separated, one per line:
   LAUNCHED     <id> ...            a bench started, as the launcher prints it
   PUBLISHED    <id> <url>          a bench opened its draft pull request
+  PUBLISH-FAILED <id> <error> <cmd> a bench's work is pushed, but its pull request
+                                   could not be opened; cmd opens it
   BENCH-FAILED  <id> <last line>    a bench ended without a pull request
   IN-REVIEW    <id>                a pull request left draft
   MERGED       <id>                a task is done
@@ -147,11 +150,12 @@ conflicts_of() {
   ' "$file"
 }
 
-# A bench's log ends with what its last step printed: the publisher's PUBLISHED
-# or NOTHING, the release's RELEASED or KEPT, or an ERROR from either.
+# A bench's log ends with what its last step printed: the publisher's PUBLISHED,
+# PUBLISH-FAILED or NOTHING, the release's RELEASED or KEPT, or an ERROR from
+# either.
 bench_end() {
   [ -f "$log_dir/$1.log" ] || return 0
-  grep -E "^(PUBLISHED|NOTHING|RELEASED|KEPT|ERROR)$tab" "$log_dir/$1.log" | tail -n 1 || true
+  grep -E "^(PUBLISHED|PUBLISH-FAILED|NOTHING|RELEASED|KEPT|ERROR)$tab" "$log_dir/$1.log" | tail -n 1 || true
 }
 
 polls=0
@@ -206,12 +210,14 @@ EOF_ROWS
       IFS="$tab" read -r what _ url <<EOF_END
 $end
 EOF_END
-      if [ "$what" = PUBLISHED ]; then
-        put published "$id" 1
-        event PUBLISHED "$id" "$url"
-      else
-        event BENCH-FAILED "$id" "$end"
-      fi
+      case "$what" in
+        PUBLISHED)
+          put published "$id" 1
+          event PUBLISHED "$id" "$url"
+          ;;
+        PUBLISH-FAILED) event "$end" ;;
+        *) event BENCH-FAILED "$id" "$end" ;;
+      esac
       # The log outlives this run, so what a previous run already announced is
       # kept beside it; otherwise every restart would stop on the same bench.
       [ "$exit_on_human" -eq 0 ] || grep -Fxq -- "$end" "$log_dir/announced" 2>/dev/null || add human "$end"
