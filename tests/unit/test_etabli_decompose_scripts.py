@@ -481,6 +481,26 @@ class TestDecompositionSummary:
         # Then it is valid
         assert result.returncode == VALID, result.stdout
 
+    def test_a_note_starting_with_a_task_id_is_not_a_task_row(self, tmp_path: Path) -> None:
+        """A note about a task under its epic must not read as a declaration of an unknown task."""
+        # Given an epic with a task row written with a colon, and a note naming the task
+        tasks = tmp_path / "tasks"
+        write_task(tasks, "ingestion-001")
+        (tmp_path / "decomposition.md").write_text(
+            "# Decomposition: test\n\n"
+            "## Epics\n\n### ingestion\n\nWhat it delivers.\n\n"
+            "- `ingestion-001`: Do ingestion-001\n"
+            "- `ingestion-001`'s open questions are in the PRD\n\n"
+            "## Parallelism\n\n**Run as:** benches\n",
+            encoding="utf-8",
+        )
+
+        # When the task set is validated
+        result = validate(tasks)
+
+        # Then it is valid
+        assert result.returncode == VALID, result.stdout
+
     def test_accepts_a_summary_that_matches(self, tmp_path: Path) -> None:
         # Given a summary matching the task set
         tasks = tmp_path / "tasks"
@@ -578,6 +598,31 @@ class TestCovers:
         # Then it is rejected
         assert result.returncode == INVALID
         assert "covers A4 in part with no note" in failures(result)[0][1]
+
+    def test_accepts_a_note_on_a_full_cover(self, tmp_path: Path) -> None:
+        # Given a full cover with a note
+        tasks = tmp_path / "tasks"
+        write_prd(tasks)
+        write_task(tasks, "ingestion-001", covers="- A1: one server, started by the CLI")
+
+        # When the task set is validated
+        result = validate(tasks)
+
+        # Then it is valid
+        assert result.returncode == VALID, result.stdout
+
+    def test_checks_the_id_of_a_noted_full_cover(self, tmp_path: Path) -> None:
+        # Given a noted full cover of an undefined requirement
+        tasks = tmp_path / "tasks"
+        write_prd(tasks)
+        write_task(tasks, "ingestion-001", covers="- A9: one server")
+
+        # When the task set is validated
+        result = validate(tasks)
+
+        # Then the id is rejected, without its colon
+        assert result.returncode == INVALID
+        assert "covers 'A9', which is no requirement id" in failures(result)[0][1]
 
     def test_rejects_a_line_it_cannot_read(self, tmp_path: Path) -> None:
         # Given a Covers line in no known form

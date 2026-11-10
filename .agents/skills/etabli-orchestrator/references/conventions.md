@@ -103,8 +103,11 @@ says what it does of a requirement it covers only in part:
 ## Covers
 
 - A1
+- A2: the vectors are rebuilt on start
 - A4 (part): sign-in through the server; revocation is not built
 ```
+
+A note on a full cover, after a colon, is allowed and ignored by the scripts.
 
 Coverage is derived from those lines and git, with nothing stored:
 `<etabli-status>/scripts/coverage.sh` reports each requirement as covered (a

@@ -1005,6 +1005,18 @@ class TestCoverage:
             ["COVERAGE", "covered=1", "partly=1", "planned=1", "not-started=1"],
         ]
 
+    def test_a_noted_full_cover_counts_for_its_requirement(self, tmp_path: Path, origin: Path) -> None:
+        # Given a merged task covering A1 in full, with a note
+        dev = developer(tmp_path, origin, "devA")
+        write_plan(dev)
+        write_covering_task(dev, "server-001", "- A1: one server, started by the CLI")
+
+        # When coverage is read
+        result = run_coverage([], cwd=dev, bin_dir=fake_gh(tmp_path, merged=["server-001"]))
+
+        # Then A1 is covered
+        assert ["REQ", "A1", "covered", "skeleton", "server-001", "-"] in rows_of(result.stdout)
+
     def test_a_full_cover_merged_later_completes_a_partial_one(self, tmp_path: Path, origin: Path) -> None:
         # Given a partial cover of A4 and a full one, both merged
         dev = developer(tmp_path, origin, "devA")

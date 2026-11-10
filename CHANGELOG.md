@@ -6,6 +6,14 @@ tagging it.
 
 ## [Unreleased]
 
+### Fixed
+
+- `validate-tasks.sh` no longer reads a note under `## Epics` that starts with
+  a task id, such as ``- `search-001`'s open questions``, as a task row.
+- A full cover may carry a note, `- R7: vectors rebuilt`. `validate-tasks.sh`
+  rejected it as unreadable, and `coverage.sh` read its id as `R7:`, so the
+  requirement never counted as covered.
+
 ## [0.2.0] - 2026-11-09
 
 ### Breaking: Établi's own vocabulary
