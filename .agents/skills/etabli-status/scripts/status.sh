@@ -5,7 +5,7 @@ set -eu
 #
 #   done         the task's pull request is merged, or a merged pull request
 #                names it on a "Task:" line
-#   in-review    the task's pull request is open and no longer a draft
+#   in-review    the task's pull request is open, draft or not
 #   in-progress  the remote branch task/<id> exists
 #   ready        every dependency is done and no branch exists yet
 #   blocked      at least one dependency is not done
@@ -188,11 +188,9 @@ EOF_CLAIMED
     }
   ' | record done_task "$dir"
 
-  # A bench opens its pull request as a draft and leaves it that way until the
-  # work is finished, so "draft" still means the bench is working. Marking it
-  # ready for review is the act that hands the task to a human.
-  review_heads="$(pr_heads "$dir" --state open --limit 200 --json headRefName,isDraft \
-    --jq '.[] | select(.isDraft | not) | .headRefName')"
+  # A bench opens its pull request only once its sessions have ended, so any
+  # open pull request, draft or not, is waiting on a person.
+  review_heads="$(pr_heads "$dir" --state open --limit 200 --json headRefName --jq '.[].headRefName')"
   record review_task "$dir" <<EOF_REVIEW
 $review_heads
 EOF_REVIEW
@@ -214,8 +212,8 @@ done
 state_of() (
   id="$1"
   has done_task "$id" && { printf 'done'; return; }
-  # More specific than in-progress: the branch still exists in both, but a pull
-  # request out of draft is waiting on a person, not on a bench.
+  # More specific than in-progress: the branch still exists in both, but an
+  # open pull request is waiting on a person, not on a bench.
   has review_task "$id" && { printf 'in-review'; return; }
   has holder "$id" && { printf 'in-progress'; return; }
   for dep in $(get depends_of "$id"); do
