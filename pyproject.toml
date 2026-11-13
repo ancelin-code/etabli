@@ -35,7 +35,7 @@ test = [
     "PyYAML>=6.0,<7",
 ]
 docs = [
-    "zensical==0.0.73",
+    "zensical==0.1.0",
 ]
 
 [tool.uv]
