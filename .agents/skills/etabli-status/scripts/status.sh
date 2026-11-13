@@ -3,7 +3,8 @@ set -eu
 
 # Derive the state of every task from git, with no stored status file.
 #
-#   done         the task's pull request is merged
+#   done         the task's pull request is merged, or a merged pull request
+#                names it on a "Task:" line
 #   in-review    the task's pull request is open and no longer a draft
 #   in-progress  the remote branch task/<id> exists
 #   ready        every dependency is done and no branch exists yet
@@ -171,10 +172,21 @@ EOF_CLAIMED
 
   # Merged tasks. Pull request state is the only reliable signal that work
   # landed, because a squash merge leaves the branch commits unreachable.
-  merged_heads="$(pr_heads "$dir" --state merged --limit 200 --json headRefName --jq '.[].headRefName')"
-  record done_task "$dir" <<EOF_MERGED
-$merged_heads
-EOF_MERGED
+  # Work merged from another branch counts too when its body has a line
+  # "Task: specs/tasks/<id>.md", as publish-bench.sh writes; a person adds it to
+  # a pull request opened by hand. One line may name several task files.
+  merged="$(pr_heads "$dir" --state merged --limit 200 --json headRefName,body \
+    --jq '.[] | .headRefName, ((.body // "") | split("\n")[] | select(startswith("Task:")))')"
+  printf '%s\n' "$merged" | awk '
+    !/^Task:/ { print; next }
+    {
+      line = $0
+      while (match(line, /tasks\/[a-z0-9][a-z0-9-]*\.md/)) {
+        print "task/" substr(line, RSTART + 6, RLENGTH - 9)
+        line = substr(line, RSTART + RLENGTH)
+      }
+    }
+  ' | record done_task "$dir"
 
   # A bench opens its pull request as a draft and leaves it that way until the
   # work is finished, so "draft" still means the bench is working. Marking it

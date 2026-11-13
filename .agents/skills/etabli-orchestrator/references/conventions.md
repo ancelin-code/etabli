@@ -256,7 +256,7 @@ Status is never stored. It is read from git:
 |---|---|
 | In progress | `task/<id>` exists on the remote |
 | In review | the task's pull request is open and out of draft |
-| Done | the task's pull request is merged |
+| Done | the task's pull request is merged, or a merged pull request's body has a line `Task: specs/tasks/<id>.md` |
 | Ready | every id in `depends_on` is done, and no branch exists yet |
 | Blocked | some id in `depends_on` is not done |
 
