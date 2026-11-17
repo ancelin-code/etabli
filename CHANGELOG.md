@@ -6,6 +6,8 @@ tagging it.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-17
+
 ### Fixed
 
 - A task delivered by a pull request from another branch no longer stays
