@@ -46,7 +46,8 @@ Events, tab-separated, one per line:
   PUBLISH-FAILED <id> <error> <cmd> a bench's work is pushed, but its pull request
                                    could not be opened; cmd opens it
   BENCH-FAILED  <id> <last line>    a bench ended without a pull request
-  IN-REVIEW    <id>                a pull request left draft
+  IN-REVIEW    <id>                a pull request opened, from a bench this machine
+                                   did not run (PUBLISHED announces its own)
   MERGED       <id>                a task is done
   WAITING      review=<ids> running=<id:minutes ...>
   MILESTONE    <slug> <state>      every task is merged, and the current milestone
@@ -193,7 +194,8 @@ EOF_ROWS
       after="$(get now "$id")"
       [ "$before" != "$after" ] || continue
       [ "$after" != "done" ] || [ -z "$before" ] || event MERGED "$id"
-      [ "$after" != in-review ] || [ -z "$before" ] || event IN-REVIEW "$id"
+      # A bench run here announces its pull request with PUBLISHED, from its log.
+      [ "$after" != in-review ] || [ -z "$before" ] || [ -f "$log_dir/$id.log" ] || event IN-REVIEW "$id"
     done
 
     # A bench's outcome is in its log, not on the remote: a draft pull request is

@@ -20,6 +20,14 @@ tagging it.
   `status.sh` passes on `gh`'s own first line when it cannot list pull
   requests, such as a proxy timeout.
 
+### Changed
+
+- An open draft pull request now reads as `in-review`, not `in-progress`. A
+  bench opens its draft only once its sessions have ended, so the draft was
+  already waiting on a person; `where.sh` now prints its `REVIEW` rows.
+  `follow.sh` prints `IN-REVIEW` only for a bench this machine did not run,
+  since `PUBLISHED` announces the others.
+
 ## [0.2.0] - 2026-11-09
 
 ### Breaking: Établi's own vocabulary
