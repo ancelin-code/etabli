@@ -103,8 +103,11 @@ says what it does of a requirement it covers only in part:
 ## Covers
 
 - A1
+- A2: the vectors are rebuilt on start
 - A4 (part): sign-in through the server; revocation is not built
 ```
+
+A note on a full cover, after a colon, is allowed and ignored by the scripts.
 
 Coverage is derived from those lines and git, with nothing stored:
 `<etabli-status>/scripts/coverage.sh` reports each requirement as covered (a
@@ -255,8 +258,8 @@ Status is never stored. It is read from git:
 | State | Rule |
 |---|---|
 | In progress | `task/<id>` exists on the remote |
-| In review | the task's pull request is open and out of draft |
-| Done | the task's pull request is merged |
+| In review | the task's pull request is open, draft or not |
+| Done | the task's pull request is merged, or a merged pull request's body has a line `Task: specs/tasks/<id>.md` |
 | Ready | every id in `depends_on` is done, and no branch exists yet |
 | Blocked | some id in `depends_on` is not done |
 

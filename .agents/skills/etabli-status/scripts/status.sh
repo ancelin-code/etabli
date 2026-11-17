@@ -3,8 +3,9 @@ set -eu
 
 # Derive the state of every task from git, with no stored status file.
 #
-#   done         the task's pull request is merged
-#   in-review    the task's pull request is open and no longer a draft
+#   done         the task's pull request is merged, or a merged pull request
+#                names it on a "Task:" line
+#   in-review    the task's pull request is open, draft or not
 #   in-progress  the remote branch task/<id> exists
 #   ready        every dependency is done and no branch exists yet
 #   blocked      at least one dependency is not done
@@ -132,10 +133,10 @@ $repos
 EOF_REPOS
 
 # Pull request heads for one query in one repository. A failed query is fatal: an
-# empty answer would read as "nothing merged".
+# empty answer would read as "nothing merged". gh's own first line says why.
 pr_heads() {
-  (cd "$1" && shift && gh pr list "$@" 2>/dev/null) ||
-    die "gh could not list pull requests in $(basename "$1"); check 'gh auth status' and the remote"
+  (cd "$1" && shift && gh pr list "$@" 2>"$store/gh.err") ||
+    die "gh could not list pull requests in $(basename "$1"): $(head -n 1 "$store/gh.err"); check 'gh auth status' and the remote"
 }
 
 # Only a task that lands in the repository answering counts: a task/<id> branch
@@ -171,16 +172,25 @@ EOF_CLAIMED
 
   # Merged tasks. Pull request state is the only reliable signal that work
   # landed, because a squash merge leaves the branch commits unreachable.
-  merged_heads="$(pr_heads "$dir" --state merged --limit 200 --json headRefName --jq '.[].headRefName')"
-  record done_task "$dir" <<EOF_MERGED
-$merged_heads
-EOF_MERGED
+  # Work merged from another branch counts too when its body has a line
+  # "Task: specs/tasks/<id>.md", as publish-bench.sh writes; a person adds it to
+  # a pull request opened by hand. One line may name several task files.
+  merged="$(pr_heads "$dir" --state merged --limit 200 --json headRefName,body \
+    --jq '.[] | .headRefName, ((.body // "") | split("\n")[] | select(startswith("Task:")))')"
+  printf '%s\n' "$merged" | awk '
+    !/^Task:/ { print; next }
+    {
+      line = $0
+      while (match(line, /tasks\/[a-z0-9][a-z0-9-]*\.md/)) {
+        print "task/" substr(line, RSTART + 6, RLENGTH - 9)
+        line = substr(line, RSTART + RLENGTH)
+      }
+    }
+  ' | record done_task "$dir"
 
-  # A bench opens its pull request as a draft and leaves it that way until the
-  # work is finished, so "draft" still means the bench is working. Marking it
-  # ready for review is the act that hands the task to a human.
-  review_heads="$(pr_heads "$dir" --state open --limit 200 --json headRefName,isDraft \
-    --jq '.[] | select(.isDraft | not) | .headRefName')"
+  # A bench opens its pull request only once its sessions have ended, so any
+  # open pull request, draft or not, is waiting on a person.
+  review_heads="$(pr_heads "$dir" --state open --limit 200 --json headRefName --jq '.[].headRefName')"
   record review_task "$dir" <<EOF_REVIEW
 $review_heads
 EOF_REVIEW
@@ -202,8 +212,8 @@ done
 state_of() (
   id="$1"
   has done_task "$id" && { printf 'done'; return; }
-  # More specific than in-progress: the branch still exists in both, but a pull
-  # request out of draft is waiting on a person, not on a bench.
+  # More specific than in-progress: the branch still exists in both, but an
+  # open pull request is waiting on a person, not on a bench.
   has review_task "$id" && { printf 'in-review'; return; }
   has holder "$id" && { printf 'in-progress'; return; }
   for dep in $(get depends_of "$id"); do

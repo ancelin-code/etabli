@@ -394,22 +394,28 @@ def fake_gh(
     merged_long_ago: list[str] = [],  # noqa: B006
     open_prs: list[tuple[str, bool]] = [],  # noqa: B006
     urls: dict[str, str] = {},  # noqa: B006
+    merged_bodies: list[str] = [],  # noqa: B006
 ) -> Path:
     """A stand-in for gh that answers the pull request queries status.sh makes.
 
     merged_long_ago holds tasks past the bulk query's window: gh only returns
     them to a query naming their branch with --head.
 
-    open_prs carries (task-id, is_draft), because draft is the whole distinction
-    between a bench still working and a task handed to a reviewer.
+    open_prs carries (task-id, is_draft). Any open pull request answers the open
+    query, since status.sh no longer filters drafts out.
 
     urls maps a task id to the pull request snapshot.sh asks for by branch.
+
+    merged_bodies are bodies of pull requests merged from other branches; the
+    bulk query answers with their "Task:" lines, as its --jq filter would.
     """
     bin_dir = tmp_path / "ghbin"
     bin_dir.mkdir(exist_ok=True)
-    merged_out = "".join(f"task/{task_id}\n" for task_id in merged)
+    merged_out = "".join(f"task/{task_id}\n" for task_id in merged) + "".join(
+        f"{line}\n" for body in merged_bodies for line in body.splitlines() if line.startswith("Task:")
+    )
     every_merged = " ".join(f"task/{task_id}" for task_id in [*merged, *merged_long_ago])
-    open_out = "".join(f"task/{task_id}\n" for task_id, draft in open_prs if not draft)
+    open_out = "".join(f"task/{task_id}\n" for task_id, _draft in open_prs)
     url_cases = "".join(f"    task/{task_id}) printf '%s\\n' {shlex.quote(url)} ;;\n" for task_id, url in urls.items())
     stub = bin_dir / "gh"
     stub.write_text(
@@ -550,12 +556,8 @@ class TestDerivedStatus:
         # Then it is in review
         assert rows["ingestion-001"][1] == "in-review"
 
-    def test_a_draft_pull_request_is_still_in_progress(self, tmp_path: Path, origin: Path) -> None:
-        """A bench drafts its pull request the moment it opens one.
-
-        Counting a draft as in review would report every running bench as waiting
-        on a reviewer, which is the opposite of the truth.
-        """
+    def test_a_draft_pull_request_is_in_review(self, tmp_path: Path, origin: Path) -> None:
+        """A bench opens its draft only once its sessions end, so the draft waits on a person."""
         # Given a claimed task with a draft pull request
         dev = developer(tmp_path, origin, "devA")
         write_task(dev, "ingestion-001")
@@ -565,8 +567,8 @@ class TestDerivedStatus:
         # When status is read
         rows = task_rows(run_status(["--no-fetch"], cwd=dev, bin_dir=bin_dir).stdout)
 
-        # Then it is in progress
-        assert rows["ingestion-001"][1] == "in-progress"
+        # Then it is in review
+        assert rows["ingestion-001"][1] == "in-review"
 
     def test_a_merged_task_outranks_its_open_pull_request(self, tmp_path: Path, origin: Path) -> None:
         """Stale open pull requests exist; merged is the end state."""
@@ -596,6 +598,36 @@ class TestDerivedStatus:
         assert rows["ingestion-001"][1] == "done"
         assert rows["ingestion-002"][1] == "ready"
 
+    def test_work_merged_from_another_branch_is_done_by_its_task_line(self, tmp_path: Path, origin: Path) -> None:
+        """A pull request opened by hand names its tasks; their benches must not redo it."""
+        # Given two tasks delivered by one pull request from a docs branch, and a third
+        dev = developer(tmp_path, origin, "devA")
+        for task_id in ("docs-001", "docs-002", "docs-003"):
+            write_task(dev, task_id)
+        body = "Ships the site.\n\nTask: specs/tasks/docs-001.md, `specs/tasks/docs-002.md`\n"
+        bin_dir = fake_gh(tmp_path, merged_bodies=[body])
+
+        # When status is read
+        rows = task_rows(run_status(["--no-fetch"], cwd=dev, bin_dir=bin_dir).stdout)
+
+        # Then the two it names are done and the third is still ready
+        assert rows["docs-001"][1] == "done"
+        assert rows["docs-002"][1] == "done"
+        assert rows["docs-003"][1] == "ready"
+
+    def test_a_task_file_named_outside_a_task_line_does_not_count(self, tmp_path: Path, origin: Path) -> None:
+        """A decomposition pull request lists the task files it adds; that delivers none of them."""
+        # Given a merged pull request whose body only mentions the task file
+        dev = developer(tmp_path, origin, "devA")
+        write_task(dev, "docs-001")
+        bin_dir = fake_gh(tmp_path, merged_bodies=["Adds specs/tasks/docs-001.md\n"])
+
+        # When status is read
+        rows = task_rows(run_status(["--no-fetch"], cwd=dev, bin_dir=bin_dir).stdout)
+
+        # Then the task is still ready
+        assert rows["docs-001"][1] == "ready"
+
     def test_dies_without_gh_rather_than_reporting_merged_work_as_ready(self, tmp_path: Path, origin: Path) -> None:
         # Given a PATH with every tool but gh
         dev = developer(tmp_path, origin, "devA")
@@ -622,15 +654,18 @@ class TestDerivedStatus:
         write_task(dev, "ingestion-001")
         bin_dir = tmp_path / "failing-gh"
         bin_dir.mkdir()
-        (bin_dir / "gh").write_text("#!/usr/bin/env bash\nexit 1\n", encoding="utf-8")
+        (bin_dir / "gh").write_text(
+            "#!/usr/bin/env bash\necho 'proxyconnect tcp: i/o timeout' >&2\nexit 1\n", encoding="utf-8"
+        )
         (bin_dir / "gh").chmod(0o755)
 
         # When status is read
         result = run_status(["--no-fetch"], cwd=dev, bin_dir=bin_dir)
 
-        # Then it dies without printing any task
+        # Then it dies with gh's reason, without printing any task
         assert result.returncode == CLAIM_ERROR
         assert "gh could not list pull requests" in result.stderr
+        assert "proxyconnect tcp: i/o timeout" in result.stderr
         assert "TASK" not in result.stdout
 
     def test_dies_without_a_tasks_directory(self, tmp_path: Path, origin: Path) -> None:
@@ -1004,6 +1039,18 @@ class TestCoverage:
             ["REQ", "X1a", "not-started", "team", "-", "-"],
             ["COVERAGE", "covered=1", "partly=1", "planned=1", "not-started=1"],
         ]
+
+    def test_a_noted_full_cover_counts_for_its_requirement(self, tmp_path: Path, origin: Path) -> None:
+        # Given a merged task covering A1 in full, with a note
+        dev = developer(tmp_path, origin, "devA")
+        write_plan(dev)
+        write_covering_task(dev, "server-001", "- A1: one server, started by the CLI")
+
+        # When coverage is read
+        result = run_coverage([], cwd=dev, bin_dir=fake_gh(tmp_path, merged=["server-001"]))
+
+        # Then A1 is covered
+        assert ["REQ", "A1", "covered", "skeleton", "server-001", "-"] in rows_of(result.stdout)
 
     def test_a_full_cover_merged_later_completes_a_partial_one(self, tmp_path: Path, origin: Path) -> None:
         # Given a partial cover of A4 and a full one, both merged

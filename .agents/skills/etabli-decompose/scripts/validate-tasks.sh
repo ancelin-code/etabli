@@ -81,7 +81,8 @@ fail() {
 
 # Read the epic/task pairs the decomposition summary declares, as "epic<TAB>id".
 # Only the Epics section is read, so prose elsewhere in the file cannot be
-# mistaken for a declaration.
+# mistaken for a declaration. A task row is "- `<id>`" alone or followed by a
+# space or a colon, so a note that starts with "`<id>`'s" is not one.
 summary_rows() {
   awk '
     /^##[[:space:]]/ { in_epics = ($0 ~ /^##[[:space:]]+Epics[[:space:]]*$/); next }
@@ -92,7 +93,7 @@ summary_rows() {
       sub(/[[:space:]]+$/, "", epic)
       next
     }
-    /^-[[:space:]]+`/ {
+    /^-[[:space:]]+`[^`]+`$/ || /^-[[:space:]]+`[^`]+`[[:space:]:]/ {
       id = $0
       sub(/^-[[:space:]]+`/, "", id)
       sub(/`.*/, "", id)
@@ -124,8 +125,9 @@ field() {
 }
 
 # The Covers section of a task: one line per requirement, "full<TAB><id>" for
-# "- <id>", "part<TAB><id><TAB><note>" for "- <id> (part): <note>", whose note
-# may wrap onto indented lines, and "bad<TAB><line>" for anything else.
+# "- <id>" or "- <id>: <note>", "part<TAB><id><TAB><note>" for
+# "- <id> (part): <note>", whose note may wrap onto indented lines, and
+# "bad<TAB><line>" for anything else.
 covers_of() {
   awk '
     function flush() { if (how != "") printf "%s\t%s\t%s\n", how, req, note; how = "" }
@@ -135,8 +137,9 @@ covers_of() {
       flush()
       line = $0; sub(/^[-*][ \t]+/, "", line); sub(/[ \t]+$/, "", line)
       req = line; sub(/[ \t].*/, "", req); note = ""
+      noted = sub(/:$/, "", req)
       if (req !~ /^[A-Za-z0-9][A-Za-z0-9-]*$/) { how = "bad"; req = line }
-      else if (line == req) how = "full"
+      else if (line == req || noted) how = "full"
       else if (line ~ /^[^ \t]+[ \t]+\(part\):/) { how = "part"; note = line; sub(/^[^:]*:[ \t]*/, "", note) }
       else { how = "bad"; req = line }
       next
@@ -247,7 +250,7 @@ for file in "$tasks_dir"/*.md; do
         covers="$covers${covers:+ }$req"
         [ -n "$note" ] || fail "$base" "covers $req in part with no note: write '- $req (part): <what this task does of it>'"
         ;;
-      bad) fail "$base" "unreadable Covers line '$req': write '- <id>' or '- <id> (part): <note>'" ;;
+      bad) fail "$base" "unreadable Covers line '$req': write '- <id>', '- <id>: <note>' or '- <id> (part): <note>'" ;;
     esac
   done <<EOF_COVERS
 $(covers_of "$file")

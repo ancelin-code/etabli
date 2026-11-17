@@ -27,10 +27,10 @@ Options:
   --summary-every <s>    Seconds between WAITING summaries (default: 300).
   --max-benches <n>        Benches running at once on this machine (default: 3).
   --no-launch            Report only; never start a bench.
-  --exit-on-human        Exit as soon as a bench ends (PUBLISHED or BENCH-FAILED),
+  --exit-on-human        Exit as soon as a bench ends (PUBLISHED, PUBLISH-FAILED or
+                         BENCH-FAILED),
                          so the end of the command is the notification. Run it
-                         again after telling the user; outcomes already
-                         announced this way do not stop the next run.
+                         again after telling the user.
   --max-polls <n>        Stop after n polls (default: no limit).
   --log-dir <dir>        Bench logs (default: .logs inside the worktree root, where
                          the launcher puts them, including a --worktree-root
@@ -39,11 +39,17 @@ Options:
   --launcher <path>      launch-benches.sh (default: beside this script).
   -h, --help             Print this help.
 
+A bench's outcome is announced once, whichever run saw it: a restart replays
+nothing. What was announced is kept in <log-dir>/announced.
+
 Events, tab-separated, one per line:
   LAUNCHED     <id> ...            a bench started, as the launcher prints it
   PUBLISHED    <id> <url>          a bench opened its draft pull request
+  PUBLISH-FAILED <id> <error> <cmd> a bench's work is pushed, but its pull request
+                                   could not be opened; cmd opens it
   BENCH-FAILED  <id> <last line>    a bench ended without a pull request
-  IN-REVIEW    <id>                a pull request left draft
+  IN-REVIEW    <id>                a pull request opened, from a bench this machine
+                                   did not run (PUBLISHED announces its own)
   MERGED       <id>                a task is done
   WAITING      review=<ids> running=<id:minutes ...>
   MILESTONE    <slug> <state>      every task is merged, and the current milestone
@@ -52,7 +58,7 @@ Events, tab-separated, one per line:
                                    starts the next milestone
   COMPLETE                         every task is merged, and every milestone closed
   STUCK        <ids>               blocked, with nothing in flight to unblock them
-  ERROR        <message>           task state could not be read; retried
+  ERROR        <message>           task state could not be read, and why; retried
 
 Exit codes:
   0  every task is merged, a milestone boundary was reached, or --max-polls
@@ -147,11 +153,12 @@ conflicts_of() {
   ' "$file"
 }
 
-# A bench's log ends with what its last step printed: the publisher's PUBLISHED
-# or NOTHING, the release's RELEASED or KEPT, or an ERROR from either.
+# A bench's log ends with what its last step printed: the publisher's PUBLISHED,
+# PUBLISH-FAILED or NOTHING, the release's RELEASED or KEPT, or an ERROR from
+# either.
 bench_end() {
   [ -f "$log_dir/$1.log" ] || return 0
-  grep -E "^(PUBLISHED|NOTHING|RELEASED|KEPT|ERROR)$tab" "$log_dir/$1.log" | tail -n 1 || true
+  grep -E "^(PUBLISHED|PUBLISH-FAILED|NOTHING|RELEASED|KEPT|ERROR)$tab" "$log_dir/$1.log" | tail -n 1 || true
 }
 
 polls=0
@@ -160,9 +167,11 @@ last_summary=$(date +%s)
 
 while :; do
   polls=$((polls + 1))
-  if ! rows="$(sh "$status_script" 2>/dev/null)"; then
+  if ! rows="$(sh "$status_script" 2>"$store/status.err")"; then
     failures=$((failures + 1))
-    event ERROR "task state could not be read (attempt $failures)"
+    # The status script's first line of complaint says why, minus its own prefix.
+    why="$(head -n 1 "$store/status.err" | sed "s/^ERROR$tab//")"
+    event ERROR "task state could not be read (attempt $failures)${why:+: $why}"
     [ "$failures" -lt 5 ] || exit 1
   else
     failures=0
@@ -187,7 +196,8 @@ EOF_ROWS
       after="$(get now "$id")"
       [ "$before" != "$after" ] || continue
       [ "$after" != "done" ] || [ -z "$before" ] || event MERGED "$id"
-      [ "$after" != in-review ] || [ -z "$before" ] || event IN-REVIEW "$id"
+      # A bench run here announces its pull request with PUBLISHED, from its log.
+      [ "$after" != in-review ] || [ -z "$before" ] || [ -f "$log_dir/$id.log" ] || event IN-REVIEW "$id"
     done
 
     # A bench's outcome is in its log, not on the remote: a draft pull request is
@@ -206,15 +216,19 @@ EOF_ROWS
       IFS="$tab" read -r what _ url <<EOF_END
 $end
 EOF_END
-      if [ "$what" = PUBLISHED ]; then
-        put published "$id" 1
-        event PUBLISHED "$id" "$url"
-      else
-        event BENCH-FAILED "$id" "$end"
-      fi
-      # The log outlives this run, so what a previous run already announced is
-      # kept beside it; otherwise every restart would stop on the same bench.
-      [ "$exit_on_human" -eq 0 ] || grep -Fxq -- "$end" "$log_dir/announced" 2>/dev/null || add human "$end"
+      [ "$what" != PUBLISHED ] || put published "$id" 1
+      # The log outlives this run, so what any run already announced is kept
+      # beside it; otherwise a restart would replay every outcome, failures
+      # long since handled included, as if it were new.
+      key="$id$tab$end"
+      ! grep -Fxq -- "$key" "$log_dir/announced" 2>/dev/null || continue
+      printf '%s\n' "$key" >>"$log_dir/announced"
+      case "$what" in
+        PUBLISHED) event PUBLISHED "$id" "$url" ;;
+        PUBLISH-FAILED) event "$end" ;;
+        *) event BENCH-FAILED "$id" "$end" ;;
+      esac
+      [ "$exit_on_human" -eq 0 ] || add human "$end"
     done
     for id in $(items in_flight); do
       if [ "$(get now "$id")" = in-review ] || has published "$id"; then add review "$id"; fi
@@ -282,10 +296,7 @@ EOF_LAUNCHED
       event STUCK "$(words blocked)"
       exit 3
     fi
-    if [ "$(count human)" -gt 0 ]; then
-      items human >>"$log_dir/announced"
-      exit 4
-    fi
+    [ "$(count human)" -eq 0 ] || exit 4
 
     if [ $(($(date +%s) - last_summary)) -ge "$summary_every" ]; then
       last_summary=$(date +%s)

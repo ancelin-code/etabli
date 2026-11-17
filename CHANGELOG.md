@@ -6,6 +6,40 @@ tagging it.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-17
+
+### Fixed
+
+- A task delivered by a pull request from another branch no longer stays
+  ready, and no bench redoes it, once that pull request's body has a line
+  `Task: specs/tasks/<id>.md`. One line may name several tasks.
+- `publish-bench.sh` retries a failed `gh` call after 5 and 15 seconds
+  (`ETABLI_GH_RETRY_DELAYS`), and warns about the `ai-assisted` label only when
+  the error is about the label. Once the branch is pushed, a lasting failure
+  prints `PUBLISH-FAILED` with the error and the command that re-runs it, and
+  `follow.sh` reports it as such rather than as `BENCH-FAILED`.
+- `follow.sh`'s `ERROR` event now says why task state could not be read, and
+  `status.sh` passes on `gh`'s own first line when it cannot list pull
+  requests, such as a proxy timeout.
+- `validate-tasks.sh` no longer reads a note under `## Epics` that starts with
+  a task id, such as ``- `search-001`'s open questions``, as a task row.
+- A full cover may carry a note, `- R7: vectors rebuilt`. `validate-tasks.sh`
+  rejected it as unreadable, and `coverage.sh` read its id as `R7:`, so the
+  requirement never counted as covered.
+- Restarting `follow.sh` no longer replays every `PUBLISHED` and
+  `BENCH-FAILED` its bench logs hold. Each outcome is announced once, whichever
+  run saw it, with or without `--exit-on-human`. `.logs/announced` now keys each
+  outcome by task, so the first run after upgrading announces once more what
+  `--exit-on-human` had already announced.
+
+### Changed
+
+- An open draft pull request now reads as `in-review`, not `in-progress`. A
+  bench opens its draft only once its sessions have ended, so the draft was
+  already waiting on a person; `where.sh` now prints its `REVIEW` rows.
+  `follow.sh` prints `IN-REVIEW` only for a bench this machine did not run,
+  since `PUBLISHED` announces the others.
+
 ## [0.2.0] - 2026-11-09
 
 ### Breaking: Établi's own vocabulary

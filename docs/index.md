@@ -25,7 +25,7 @@ status file.
   The skills hold no harness-specific tool names, and the bench launcher has an
   adapter for each, plus a custom command for any other.
 
-## What version 0.2.0 does
+## What version 0.2.1 does
 
 - Six skills that are one workflow: `etabli-orchestrator` routes every request,
   `etabli-spec` writes requirements and contracts, `etabli-decompose` cuts them

@@ -10,7 +10,7 @@ description: >-
 license: Apache-2.0
 repository: https://github.com/ancelin-code/etabli.git
 product-version: etabli@v0
-version: "0.2.0"
+version: "0.2.1"
 keywords:
   - claim-task
   - etabli-status
@@ -90,8 +90,8 @@ answer, because the answer lives in the refs.
 | State | How it is derived |
 |---|---|
 | In progress | the remote branch `task/<id>` exists |
-| In review | the task's pull request is open and no longer a draft |
-| Done | the task's pull request is merged |
+| In review | the task's pull request is open, draft or not |
+| Done | the task's pull request is merged, or a merged pull request's body has a line `Task: specs/tasks/<id>.md` |
 | Ready | every `depends_on` entry is done and no branch exists yet |
 | Blocked | some `depends_on` entry is not done |
 
@@ -99,9 +99,8 @@ Narrow the output with `--ready`, `--blocked`, `--in-progress` or `--in-review`.
 Use `--ready` to answer "what can I pick up", which is the question that precedes
 a claim, and `--in-review` for what is waiting on a person rather than on a bench.
 
-A bench opens its pull request as a draft and leaves it drafted while it works,
-so in review is reached by marking it ready for review. Nothing a bench does on
-its own moves a task out of in progress.
+A bench opens its draft pull request only once its sessions have ended, so a
+draft is already waiting on a person: its review, then marking it ready.
 
 When `specs/decomposition.md` plans milestones, the output also carries one
 `MILESTONE` row per milestone, in plan order: its slug, its state (`closed`,
@@ -116,6 +115,11 @@ Reading pull request state needs `gh`, authenticated against the repository's
 forge. Branches are deleted on merge, so a merged pull request is the only
 record that a task is done. Without `gh`, or when it cannot list pull requests,
 the script exits 1 rather than report merged work as ready.
+
+Work merged from a branch other than `task/<id>` counts once its pull request
+body names the task on a `Task:` line, which may name several. Add the line to
+a pull request opened by hand. Only the 200 most recent merged pull requests
+are read this way.
 
 For a stand-up, the same data grouped for reading aloud:
 

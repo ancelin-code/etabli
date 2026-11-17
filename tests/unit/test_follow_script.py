@@ -40,7 +40,8 @@ def scripted_status(tmp_path: Path, polls: list[dict[str, str]], milestones: str
     script = tmp_path / "status.sh"
     script.write_text(
         f'n=$(( $(cat "{folder}/count" 2>/dev/null || echo 0) + 1 )); echo "$n" > "{folder}/count"\n'
-        f'last=$(ls "{folder}"/*.tsv | wc -l); [ "$n" -le "$last" ] || n=$last\n'
+        # macOS pads wc's count with spaces, which would then name no file.
+        f'last=$(ls "{folder}"/*.tsv | wc -l | tr -d " "); [ "$n" -le "$last" ] || n=$last\n'
         f'cat "{folder}/$n.tsv"\n',
         encoding="utf-8",
     )
@@ -270,6 +271,40 @@ class TestBenchOutcomes:
         # Then the pull request is announced once
         assert events(result.stdout).count(["PUBLISHED", "a-001", "https://example.test/pr/4"]) == 1
 
+    def test_a_restart_replays_no_outcome(self, tmp_path: Path) -> None:
+        """A failure fixed by hand since must not come back as new on the next run."""
+        # Given one run that announced a published bench and a failed one
+        repo = repo_with(tmp_path, {"a-001": "", "a-002": ""})
+        logs = repo.parent / "benches" / repo.name / ".logs"
+        logs.mkdir(parents=True)
+        (logs / "a-001.log").write_text("PUBLISHED\ta-001\thttps://example.test/pr/4\n", encoding="utf-8")
+        (logs / "a-002.log").write_text("ERROR\tgh pr create failed\n", encoding="utf-8")
+        status = scripted_status(tmp_path, [{"a-001": "in-progress", "a-002": "in-progress"}])
+        first = follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1")
+
+        # When the loop is run again
+        second = follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1")
+
+        # Then only the first run announced them
+        assert [e[0] for e in events(first.stdout)] == ["PUBLISHED", "BENCH-FAILED"]
+        assert events(second.stdout) == []
+
+    def test_a_new_outcome_in_a_relaunched_bench_is_announced(self, tmp_path: Path) -> None:
+        # Given a failure announced by one run, then the bench relaunched and published
+        repo = repo_with(tmp_path, {"a-001": ""})
+        logs = repo.parent / "benches" / repo.name / ".logs"
+        logs.mkdir(parents=True)
+        (logs / "a-001.log").write_text("ERROR\tgh pr create failed\n", encoding="utf-8")
+        status = scripted_status(tmp_path, [{"a-001": "in-progress"}])
+        follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1")
+        (logs / "a-001.log").write_text("PUBLISHED\ta-001\thttps://example.test/pr/4\n", encoding="utf-8")
+
+        # When the loop is run again
+        result = follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1")
+
+        # Then the new outcome is announced
+        assert events(result.stdout) == [["PUBLISHED", "a-001", "https://example.test/pr/4"]]
+
     def test_a_bench_that_ended_without_a_pull_request_is_reported(self, tmp_path: Path) -> None:
         # Given a bench log that ended with the bench kept
         repo = repo_with(tmp_path, {"a-001": ""})
@@ -284,6 +319,49 @@ class TestBenchOutcomes:
         # Then the bench is reported as failed
         assert events(result.stdout)[0][:2] == ["BENCH-FAILED", "a-001"]
 
+    def test_a_bench_whose_pull_request_could_not_open_is_not_a_failed_bench(self, tmp_path: Path) -> None:
+        """The work is pushed, so the event says how to open the pull request, not that the bench failed."""
+        # Given a bench log that ends with the publisher unable to open the pull request
+        repo = repo_with(tmp_path, {"a-001": ""})
+        logs = repo.parent / "benches" / repo.name / ".logs"
+        logs.mkdir(parents=True)
+        (logs / "a-001.log").write_text(
+            "PUBLISH-FAILED\ta-001\ti/o timeout\tcd /b && sh publish-bench.sh\n", encoding="utf-8"
+        )
+        status = scripted_status(tmp_path, [{"a-001": "in-progress"}])
+
+        # When the loop polls once
+        result = follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1")
+
+        # Then the event carries the error and the re-run command
+        assert events(result.stdout)[0] == ["PUBLISH-FAILED", "a-001", "i/o timeout", "cd /b && sh publish-bench.sh"]
+
+    def test_a_pull_request_from_elsewhere_is_announced_in_review(self, tmp_path: Path) -> None:
+        # Given a task that goes in review with no bench log on this machine
+        repo = repo_with(tmp_path, {"a-001": ""})
+        status = scripted_status(tmp_path, [{"a-001": "in-progress"}, {"a-001": "in-review"}])
+
+        # When the loop polls twice
+        result = follow(repo, status, recording_launcher(tmp_path), "--max-polls", "2", "--interval", "0")
+
+        # Then it is announced in review
+        assert ["IN-REVIEW", "a-001"] in events(result.stdout)
+
+    def test_a_bench_run_here_is_announced_by_its_log_only(self, tmp_path: Path) -> None:
+        """Its draft makes the task in review, and PUBLISHED already said so."""
+        # Given a bench log that published, and the task going in review
+        repo = repo_with(tmp_path, {"a-001": ""})
+        logs = repo.parent / "benches" / repo.name / ".logs"
+        logs.mkdir(parents=True)
+        (logs / "a-001.log").write_text("PUBLISHED\ta-001\thttps://example.test/pr/4\n", encoding="utf-8")
+        status = scripted_status(tmp_path, [{"a-001": "in-progress"}, {"a-001": "in-review"}])
+
+        # When the loop polls twice
+        result = follow(repo, status, recording_launcher(tmp_path), "--max-polls", "2", "--interval", "0")
+
+        # Then only PUBLISHED is announced
+        assert [e[0] for e in events(result.stdout)] == ["PUBLISHED"]
+
     def test_unreadable_state_is_retried_then_given_up(self, tmp_path: Path) -> None:
         # Given a status script that always fails
         repo = repo_with(tmp_path, {"a-001": ""})
@@ -296,6 +374,25 @@ class TestBenchOutcomes:
         # Then it reports five errors and gives up
         assert result.returncode == 1
         assert [e[0] for e in events(result.stdout)] == ["ERROR"] * 5
+
+    def test_an_unreadable_state_says_why(self, tmp_path: Path) -> None:
+        """A proxy timeout and an expired login need different fixes; the event must tell them apart."""
+        # Given a status script that fails with a reason
+        repo = repo_with(tmp_path, {"a-001": ""})
+        broken = tmp_path / "status.sh"
+        broken.write_text(
+            "printf 'ERROR\\tgh could not list pull requests in a: i/o timeout\\n' >&2\nprintf 'more\\n' >&2\nexit 1\n",
+            encoding="utf-8",
+        )
+
+        # When the loop polls once
+        result = follow(repo, broken, recording_launcher(tmp_path), "--max-polls", "1")
+
+        # Then the error carries the first line of the reason
+        assert events(result.stdout)[0] == [
+            "ERROR",
+            "task state could not be read (attempt 1): gh could not list pull requests in a: i/o timeout",
+        ]
 
 
 class TestExitOnHuman:
