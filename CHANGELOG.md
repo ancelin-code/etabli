@@ -24,6 +24,11 @@ tagging it.
 - A full cover may carry a note, `- R7: vectors rebuilt`. `validate-tasks.sh`
   rejected it as unreadable, and `coverage.sh` read its id as `R7:`, so the
   requirement never counted as covered.
+- Restarting `follow.sh` no longer replays every `PUBLISHED` and
+  `BENCH-FAILED` its bench logs hold. Each outcome is announced once, whichever
+  run saw it, with or without `--exit-on-human`. `.logs/announced` now keys each
+  outcome by task, so the first run after upgrading announces once more what
+  `--exit-on-human` had already announced.
 
 ### Changed
 
