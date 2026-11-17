@@ -16,6 +16,9 @@ tagging it.
   the error is about the label. Once the branch is pushed, a lasting failure
   prints `PUBLISH-FAILED` with the error and the command that re-runs it, and
   `follow.sh` reports it as such rather than as `BENCH-FAILED`.
+- `follow.sh`'s `ERROR` event now says why task state could not be read, and
+  `status.sh` passes on `gh`'s own first line when it cannot list pull
+  requests, such as a proxy timeout.
 
 ## [0.2.0] - 2026-11-09
 
