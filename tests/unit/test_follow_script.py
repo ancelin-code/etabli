@@ -284,6 +284,23 @@ class TestBenchOutcomes:
         # Then the bench is reported as failed
         assert events(result.stdout)[0][:2] == ["BENCH-FAILED", "a-001"]
 
+    def test_a_bench_whose_pull_request_could_not_open_is_not_a_failed_bench(self, tmp_path: Path) -> None:
+        """The work is pushed, so the event says how to open the pull request, not that the bench failed."""
+        # Given a bench log that ends with the publisher unable to open the pull request
+        repo = repo_with(tmp_path, {"a-001": ""})
+        logs = repo.parent / "benches" / repo.name / ".logs"
+        logs.mkdir(parents=True)
+        (logs / "a-001.log").write_text(
+            "PUBLISH-FAILED\ta-001\ti/o timeout\tcd /b && sh publish-bench.sh\n", encoding="utf-8"
+        )
+        status = scripted_status(tmp_path, [{"a-001": "in-progress"}])
+
+        # When the loop polls once
+        result = follow(repo, status, recording_launcher(tmp_path), "--max-polls", "1")
+
+        # Then the event carries the error and the re-run command
+        assert events(result.stdout)[0] == ["PUBLISH-FAILED", "a-001", "i/o timeout", "cd /b && sh publish-bench.sh"]
+
     def test_unreadable_state_is_retried_then_given_up(self, tmp_path: Path) -> None:
         # Given a status script that always fails
         repo = repo_with(tmp_path, {"a-001": ""})

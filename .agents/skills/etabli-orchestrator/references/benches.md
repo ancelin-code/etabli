@@ -109,10 +109,12 @@ allowance still has room.
 - **The task turns out to be wrong.** Stop. Do not widen the scope to make it
   work. The task goes back for correction, and the attempt is reported. The
   attempt is reverted, so no pull request opens; the report is in the log.
-- **Published, but not by the publisher.** A failed commit hook, push or `gh`
-  call leaves the change in the worktree and an `ERROR` line at the end of the
-  log. Fix the cause, then re-run the publisher from the worktree:
-  `sh <skill-root>/scripts/publish-bench.sh specs/tasks/<id>.md`.
+- **Published, but not by the publisher.** A failed commit hook or push
+  leaves the change in the worktree and an `ERROR` line at the end of the log.
+  Fix the cause, then re-run the publisher from the worktree:
+  `sh <skill-root>/scripts/publish-bench.sh specs/tasks/<id>.md`. When the push
+  worked but `gh` kept failing, after two retries, the log ends with
+  `PUBLISH-FAILED`, its error and the exact command that opens the pull request.
 - **Repeated failure.** After two repair attempts on the same failure, hand it
   to a human. A third automatic attempt rarely differs from the second.
 

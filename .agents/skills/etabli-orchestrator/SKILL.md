@@ -187,6 +187,7 @@ sh <skill-root>/scripts/follow.sh -- <the launcher options you used>
 
 It launches each task as the merges it depends on land, within the same limits,
 and prints one line per event: `PUBLISHED`, `MERGED`, `LAUNCHED`, `BENCH-FAILED`,
+`PUBLISH-FAILED` (the work is pushed; the line gives the command that opens its pull request),
 and `COMPLETE`, `MILESTONE` or `STUCK` when it exits. `MILESTONE` means the
 current milestone needs a person: tell the user, and take up its review. Run it in the background where the
 harness reports a background command's output as it arrives, and tell the user
