@@ -31,8 +31,8 @@ Run from the repository root. Prints, tab-separated:
   COVERAGE  covered=<n> partly=<n> planned=<n> not-started=<n>
 
 A requirement is an outcome in specs/prd.md written as "- **<id>.** ...".
-A task covers it by listing the id under "## Covers", in full as "- <id>" or
-in part as "- <id> (part): <what this task does of it>".
+A task covers it by listing the id under "## Covers", in full as "- <id>"
+(or "- <id>: <note>") or in part as "- <id> (part): <what this task does of it>".
 
 Options:
   --milestone <slug>  Only the requirements this milestone targets.
@@ -112,8 +112,8 @@ for file in "$tasks_dir"/*.md; do
   ' "$file")"
   [ -n "$id" ] || continue
   state="$(printf '%s\n' "$status_out" | ID="$id" awk -F'\t' '$1 == "TASK" && $2 == ENVIRON["ID"] { print $3; exit }')"
-  # The Covers section: "- <id>" or "- <id> (part): <note>", where the note may
-  # wrap onto indented lines.
+  # The Covers section: "- <id>", "- <id>: <note>" or "- <id> (part): <note>",
+  # where the note may wrap onto indented lines. A full cover's note is dropped.
   awk -v task="$id" -v st="${state:-unknown}" '
     function flush() { if (req != "") printf "%s\t%s\t%s\t%s\t%s\n", req, task, st, how, note; req = "" }
     /^##[[:space:]]/ { flush(); in_covers = ($0 ~ /^##[[:space:]]+Covers[[:space:]]*$/); next }
@@ -121,7 +121,7 @@ for file in "$tasks_dir"/*.md; do
     /^[-*][ \t]+/ {
       flush()
       line = $0; sub(/^[-*][ \t]+/, "", line); sub(/[ \t]+$/, "", line)
-      req = line; sub(/[ \t].*/, "", req)
+      req = line; sub(/[ \t].*/, "", req); sub(/:$/, "", req)
       if (line ~ /\(part\):/) { how = "part"; note = line; sub(/^[^:]*:[ \t]*/, "", note) }
       else { how = "full"; note = "" }
       next
